@@ -1,0 +1,180 @@
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: white;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: white;
+  border-bottom: 1px solid #eee;
+}
+
+.chat-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.leave-button {
+  padding: 0.5rem 1rem;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.leave-button:hover {
+  background: #333;
+}
+
+.chat-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.messages-container {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.message {
+  max-width: 70%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f5f5f5;
+  margin-right: auto;
+}
+
+.message.own-message {
+  background: black;
+  color: white;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.message-content {
+  word-break: break-word;
+}
+
+.users-sidebar {
+  width: 200px;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-left: 1px solid #eee;
+  overflow-y: auto;
+}
+
+.users-sidebar h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+}
+
+.users-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.users-sidebar li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.message-form {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border-top: 1px solid #eee;
+}
+
+.message-form input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.message-form input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.message-form button {
+  padding: 0.75rem 1.5rem;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.message-form button:hover {
+  background: #333;
+}
+
+/* Home page join room styles */
+.join-room-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 60px);
+  padding: 2rem;
+}
+
+.join-room-container h2 {
+  margin-bottom: 2rem;
+}
+
+.join-room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.join-room-form input {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.join-room-form input:focus {
+  outline: none;
+  border-color: black;
+}
+
+.join-room-form button {
+  padding: 0.75rem;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.join-room-form button:hover {
+  background: #333;
+}

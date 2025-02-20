@@ -3,11 +3,21 @@ const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('./prisma-client');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:8080",
+    methods: ["GET", "POST"]
+  }
+});
+
 const port = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -215,7 +225,56 @@ app.get('/posts', async (req, res) => {
   }
 });
 
+// Socket.IO
+const rooms = new Map();
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('join_room', ({ roomId, username }) => {
+    socket.join(roomId);
+    
+    if (!rooms.has(roomId)) {
+      rooms.set(roomId, new Set());
+    }
+    rooms.get(roomId).add(username);
+    
+    // Broadcast to room that user joined
+    io.to(roomId).emit('user_joined', {
+      username,
+      users: Array.from(rooms.get(roomId))
+    });
+  });
+
+  socket.on('leave_room', ({ roomId, username }) => {
+    socket.leave(roomId);
+    if (rooms.has(roomId)) {
+      rooms.get(roomId).delete(username);
+      if (rooms.get(roomId).size === 0) {
+        rooms.delete(roomId);
+      } else {
+        io.to(roomId).emit('user_left', {
+          username,
+          users: Array.from(rooms.get(roomId))
+        });
+      }
+    }
+  });
+
+  socket.on('send_message', ({ roomId, message, username }) => {
+    io.to(roomId).emit('receive_message', {
+      message,
+      username,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 // Start server
-app.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
