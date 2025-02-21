@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import '../styles/auth.css';
 
@@ -20,6 +21,8 @@ function Login() {
     });
   };
 
+  const { login } = useAuth();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -28,9 +31,8 @@ function Login() {
       const endpoint = isLogin ? '/login' : '/signup';
       const response = await axios.post(`http://localhost:4000${endpoint}`, formData);
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
+      // Use the auth context to handle login
+      login(response.data.user, response.data.token);
       navigate('/home');
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');

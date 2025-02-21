@@ -19,6 +19,7 @@ model User {
   updatedAt     DateTime        @updatedAt
   workspaces    UserWorkspace[]
   createdWorkspaces Workspace[] @relation("WorkspaceCreator")
+  messages      WorkspaceMessage[]
 }
 
 model Workspace {
@@ -29,6 +30,7 @@ model Workspace {
   creator     User            @relation("WorkspaceCreator", fields: [creatorId], references: [id])
   creatorId   Int
   members     UserWorkspace[]
+  messages    WorkspaceMessage[]
 }
 
 model UserWorkspace {
@@ -41,4 +43,18 @@ model UserWorkspace {
   joinedAt    DateTime  @default(now())
 
   @@unique([userId, workspaceId])
+}
+
+model WorkspaceMessage {
+  id          Int       @id @default(autoincrement())
+  content     String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId Int
+  sender      User      @relation(fields: [senderId], references: [id])
+  senderId    Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@index([senderId])
 }

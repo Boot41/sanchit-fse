@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import WorkspaceChat from './WorkspaceChat';
 import '../styles/workspace.css';
 
 function Workspace() {
@@ -10,6 +11,7 @@ function Workspace() {
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     fetchWorkspaces();
@@ -123,7 +125,12 @@ function Workspace() {
 
       {selectedWorkspace && (
         <div className="workspace-details">
-          <h2>{selectedWorkspace.workspace.name}</h2>
+          <div className="workspace-header">
+            <h2>{selectedWorkspace.workspace.name}</h2>
+            <button onClick={() => setShowChat(!showChat)}>
+              {showChat ? 'Hide Chat' : 'Show Chat'}
+            </button>
+          </div>
           
           {selectedWorkspace.role === 'leader' && (
             <form onSubmit={addMember} className="add-member-form">
@@ -147,6 +154,15 @@ function Workspace() {
               </div>
             ))}
           </div>
+          
+          {showChat && (
+            <div className="workspace-chat-container">
+              <WorkspaceChat
+                workspace={selectedWorkspace}
+                onClose={() => setShowChat(false)}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

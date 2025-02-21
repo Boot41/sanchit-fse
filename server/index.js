@@ -6,7 +6,9 @@ const prisma = require('./prisma-client');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const workspaceRoutes = require('./routes/workspace');
+const messageRoutes = require('./routes/messages');
 const { isAuth } = require('./middleware/auth');
+const initializeSocket = require('./socket');
 
 // Load environment variables
 dotenv.config();
@@ -38,8 +40,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Use workspace routes
+// Use routes
 app.use('/api/workspaces', workspaceRoutes);
+app.use('/', messageRoutes);
 
 // Public routes
 app.post('/signup', async (req, res) => {
@@ -287,6 +290,9 @@ io.on('connection', (socket) => {
 });
 
 // Start server
+// Initialize socket.io
+initializeSocket(io);
+
 httpServer.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
