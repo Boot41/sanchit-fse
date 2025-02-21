@@ -6,7 +6,12 @@ services:
       context: ./client
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:4000
     depends_on:
       - server
 
@@ -16,6 +21,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
     environment:
       - DATABASE_URL=postgresql://admin:password123@postgres:5432/myapp
       - PORT=4000
