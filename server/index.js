@@ -66,6 +66,7 @@ const isAuth = async (req, res, next) => {
 // Public routes
 app.post('/signup', async (req, res) => {
   try {
+    console.log('Signup request received:', req.body);
     const { email, username, password } = req.body;
 
     // Validate input
@@ -109,6 +110,7 @@ app.post('/signup', async (req, res) => {
     // Generate token
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
 
+    console.log('User created successfully:', { user, token });
     res.json({ user, token });
   } catch (error) {
     console.error('Signup error:', error);
