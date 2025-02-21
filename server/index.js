@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const prisma = require('./prisma-client');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
+const workspaceRoutes = require('./routes/workspace');
+const { isAuth } = require('./middleware/auth');
 
 // Load environment variables
 dotenv.config();
@@ -36,32 +38,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Auth middleware
-const isAuth = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, username: true, role: true }
-    });
-
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-};
+// Use workspace routes
+app.use('/api/workspaces', workspaceRoutes);
 
 // Public routes
 app.post('/signup', async (req, res) => {
@@ -81,6 +59,11 @@ app.post('/signup', async (req, res) => {
           { email },
           { username }
         ]
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true
       }
     });
 
@@ -96,14 +79,12 @@ app.post('/signup', async (req, res) => {
       data: {
         email,
         username,
-        password: hashedPassword,
-        role: 'member'
+        password: hashedPassword
       },
       select: {
         id: true,
         email: true,
-        username: true,
-        role: true
+        username: true
       }
     });
 
@@ -129,7 +110,13 @@ app.post('/login', async (req, res) => {
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        password: true
+      }
     });
 
     if (!user) {
