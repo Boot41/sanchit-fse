@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ChatRoom from './ChatRoom';
+import Workspace from './Workspace';
 import '../styles/home.css';
 
 function Home() {
@@ -40,18 +41,25 @@ function Home() {
           Logout
         </button>
       </header>
-      <div className="join-room-container">
-        <h2>Join a Chat Room</h2>
-        <form onSubmit={handleJoinRoom} className="join-room-form">
-          <input
-            type="text"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            placeholder="Enter Room ID"
-            required
-          />
-          <button type="submit">Join Room</button>
-        </form>
+      
+      <div className="main-content">
+        <div className="join-room-container">
+          <h2>Join a Chat Room</h2>
+          <form onSubmit={handleJoinRoom} className="join-room-form">
+            <input
+              type="text"
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              placeholder="Enter Room ID"
+              required
+            />
+            <button type="submit">Join Room</button>
+          </form>
+        </div>
+
+        <div className="workspace-section">
+          <Workspace />
+        </div>
       </div>
     </div>
   );

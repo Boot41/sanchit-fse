@@ -153,6 +153,29 @@ app.get('/', (req, res) => {
 });
 
 // User routes
+app.get('/api/users/by-email/:email', isAuth, async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        username: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Find user by email error:', error);
+    res.status(500).json({ error: 'Failed to find user' });
+  }
+});
+
 app.post('/users', async (req, res) => {
   try {
     const { email, name } = req.body;
