@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
-import { useNavigate } from 'react-router-dom';
 import '../styles/chat.css';
 
 function ChatRoom({ roomId, username }) {
   const socket = useSocket();
-  const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
@@ -53,19 +51,8 @@ function ChatRoom({ roomId, username }) {
     }
   };
 
-  const handleLeaveRoom = () => {
-    navigate('/home');
-  };
-
   return (
     <div className="chat-container">
-      <div className="chat-header">
-        <h2>Room: {roomId}</h2>
-        <button onClick={handleLeaveRoom} className="leave-button">
-          Leave Room
-        </button>
-      </div>
-      
       <div className="chat-main">
         <div className="messages-container">
           {messages.map((msg, index) => (
@@ -86,7 +73,7 @@ function ChatRoom({ roomId, username }) {
         </div>
         
         <div className="users-sidebar">
-          <h3>Users in Room</h3>
+          <h3>Online Users</h3>
           <ul>
             {users.map((user, index) => (
               <li key={index}>{user}</li>
@@ -101,8 +88,11 @@ function ChatRoom({ roomId, username }) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Type a message..."
+          required
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={!message.trim()}>
+          Send
+        </button>
       </form>
     </div>
   );
