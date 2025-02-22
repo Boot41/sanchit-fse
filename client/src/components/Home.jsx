@@ -15,6 +15,9 @@ function Home() {
   const [error, setError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteError, setInviteError] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
@@ -32,7 +35,7 @@ function Home() {
         // Map the response to get workspace objects with correct structure
         const workspacesData = response.data.map(userWorkspace => ({
           id: userWorkspace.workspace.id,
-          name: userWorkspace.workspace.name,
+          workspace: userWorkspace.workspace,
           role: userWorkspace.role
         }));
         setWorkspaces(workspacesData);
@@ -100,6 +103,33 @@ function Home() {
     }
   };
 
+  const handleInviteMember = async (workspaceId) => {
+    try {
+      setInviteError('');
+      const token = localStorage.getItem('token');
+      
+      // First find user by email
+      const userResponse = await axios.get(`http://localhost:4000/api/users/by-email/${inviteEmail}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Then add them to the workspace
+      const response = await axios.post(`http://localhost:4000/api/workspaces/${workspaceId}/members`, {
+        userId: userResponse.data.id
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Update members list
+      await fetchWorkspaceMembers(workspaceId);
+      setInviteEmail('');
+      setShowInviteForm(false);
+    } catch (error) {
+      console.error('Error inviting member:', error);
+      setInviteError(error.response?.data?.error || 'Failed to invite member');
+    }
+  };
+
   if (routeRoomId) {
     return <ChatRoom roomId={routeRoomId} username={user?.username} />;
   }
@@ -110,7 +140,7 @@ function Home() {
         <div className="sidebar-header">
           <div className="workspace-title">
             <span className="workspace-icon">Ac</span>
-            <h1>A1 Company Ltd.</h1>
+            <h1>DASHBOARD</h1>
           </div>
         </div>
         
@@ -163,7 +193,7 @@ function Home() {
                     onClick={() => handleWorkspaceClick(workspace)}
                   >
                     <div className="workspace-item-main">
-                      <span className="workspace-name">{workspace.name}</span>
+                      <span className="workspace-name">{workspace.workspace.name}</span>
                       {workspace.role === 'leader' && (
                         <span className="workspace-role">Leader</span>
                       )}
@@ -175,13 +205,13 @@ function Home() {
                         <h3>Members</h3>
                       </div>
                       <ul className="member-list">
-                        {workspaceMembers[workspace.id]?.map((member, index) => (
-                          <li key={index} className="member-item">
+                        {workspaceMembers[workspace.id]?.map((member) => (
+                          <li key={member.user.id} className="member-item">
                             <span className="member-avatar">
-                              {member.username?.[0]?.toUpperCase()}
+                              {member.user.username[0].toUpperCase()}
                             </span>
                             <span className="member-name">
-                              {member.username}
+                              {member.user.username}
                               {member.role === 'leader' && (
                                 <span className="member-role">Leader</span>
                               )}
@@ -189,9 +219,39 @@ function Home() {
                           </li>
                         ))}
                       </ul>
-                      <div className="dropdown-actions">
-                        <button className="dropdown-btn">Invite Members</button>
-                      </div>
+                      {workspace.role === 'leader' && (
+                        <div className="dropdown-actions">
+                          {showInviteForm && activeDropdown === workspace.id ? (
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              handleInviteMember(workspace.id);
+                            }} className="invite-form">
+                              <input
+                                type="email"
+                                value={inviteEmail}
+                                onChange={(e) => setInviteEmail(e.target.value)}
+                                placeholder="Enter email"
+                                required
+                              />
+                              <div className="form-buttons">
+                                <button type="submit">Send</button>
+                                <button type="button" onClick={() => {
+                                  setShowInviteForm(false);
+                                  setInviteError('');
+                                }}>Cancel</button>
+                              </div>
+                              {inviteError && <p className="error-message">{inviteError}</p>}
+                            </form>
+                          ) : (
+                            <button 
+                              className="dropdown-btn"
+                              onClick={() => setShowInviteForm(true)}
+                            >
+                              Invite Members
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>
@@ -211,12 +271,12 @@ function Home() {
       <div className="main-content">
         {selectedWorkspace ? (
           <ChatRoom 
-            roomId={selectedWorkspace.id.toString()} 
+            roomId={selectedWorkspace.workspace.id.toString()} 
             username={user?.username}
           />
         ) : (
-          <div className="empty-state">
-            <h2>Welcome to your workspace!</h2>
+          <div className="welcome-message">
+            <h2>Welcome to A1 Company Ltd.</h2>
             <p>Select a workspace to start chatting</p>
           </div>
         )}

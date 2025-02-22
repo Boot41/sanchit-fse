@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
+import axios from 'axios';
 import '../styles/chat.css';
 
 function ChatRoom({ roomId, username }) {
@@ -26,28 +27,66 @@ function ChatRoom({ roomId, username }) {
       setUsers(users);
     });
 
+    socket.on('previous_messages', (messages) => {
+      setMessages(messages);
+      scrollToBottom();
+    });
+
     socket.on('receive_message', (data) => {
       setMessages((prev) => [...prev, data]);
       scrollToBottom();
     });
+
+    // Fetch initial messages
+    const fetchMessages = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`http://localhost:4000/api/workspaces/${roomId}/messages`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setMessages(response.data.map(msg => ({
+          message: msg.content,
+          username: msg.sender.username,
+          timestamp: msg.createdAt
+        })));
+        scrollToBottom();
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    };
+
+    fetchMessages();
 
     return () => {
       socket.emit('leave_room', { roomId, username });
       socket.off('user_joined');
       socket.off('user_left');
       socket.off('receive_message');
+      socket.off('previous_messages');
     };
   }, [socket, roomId, username]);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (message.trim() && socket) {
-      socket.emit('send_message', {
-        roomId,
-        message: message.trim(),
-        username
-      });
-      setMessage('');
+      try {
+        const token = localStorage.getItem('token');
+        await axios.post(`http://localhost:4000/api/workspaces/${roomId}/messages`, {
+          content: message.trim()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        socket.emit('send_message', {
+          roomId,
+          message: message.trim(),
+          username
+        });
+        
+        setMessage('');
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
     }
   };
 

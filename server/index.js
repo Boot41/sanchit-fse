@@ -7,6 +7,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const workspaceRoutes = require('./routes/workspace');
 const messageRoutes = require('./routes/messages');
+const groqRoutes = require('./routes/groq');
 const { isAuth } = require('./middleware/auth');
 const initializeSocket = require('./socket');
 
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
 // Use routes
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/', messageRoutes);
+app.use('/', groqRoutes);
 
 // Public routes
 app.post('/signup', async (req, res) => {
@@ -246,13 +248,39 @@ const rooms = new Map();
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('join_room', ({ roomId, username }) => {
+  socket.on('join_room', async ({ roomId, username }) => {
     socket.join(roomId);
     
     if (!rooms.has(roomId)) {
       rooms.set(roomId, new Set());
     }
     rooms.get(roomId).add(username);
+    
+    // Fetch previous messages
+    try {
+      const messages = await prisma.workspaceMessage.findMany({
+        where: { workspaceId: parseInt(roomId) },
+        include: {
+          sender: {
+            select: {
+              username: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'asc'
+        }
+      });
+
+      // Send previous messages to the joining user
+      socket.emit('previous_messages', messages.map(msg => ({
+        message: msg.content,
+        username: msg.sender.username,
+        timestamp: msg.createdAt
+      })));
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
     
     // Broadcast to room that user joined
     io.to(roomId).emit('user_joined', {
@@ -276,12 +304,42 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('send_message', ({ roomId, message, username }) => {
-    io.to(roomId).emit('receive_message', {
-      message,
-      username,
-      timestamp: new Date().toISOString()
-    });
+  socket.on('send_message', async ({ roomId, message, username }) => {
+    try {
+      // Store message in database
+      const user = await prisma.user.findFirst({
+        where: { username }
+      });
+
+      if (!user) {
+        console.error('User not found:', username);
+        return;
+      }
+
+      const storedMessage = await prisma.workspaceMessage.create({
+        data: {
+          content: message,
+          workspaceId: parseInt(roomId),
+          senderId: user.id
+        },
+        include: {
+          sender: {
+            select: {
+              username: true
+            }
+          }
+        }
+      });
+
+      // Broadcast message to room
+      io.to(roomId).emit('receive_message', {
+        message,
+        username,
+        timestamp: storedMessage.createdAt
+      });
+    } catch (error) {
+      console.error('Error storing message:', error);
+    }
   });
 
   socket.on('disconnect', () => {
