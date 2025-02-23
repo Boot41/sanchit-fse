@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const workspaceRoutes = require('./routes/workspace');
 const messageRoutes = require('./routes/messages');
 const groqRoutes = require('./routes/groq');
+const taskRoutes = require('./routes/tasks');
 const { isAuth } = require('./middleware/auth');
 const initializeSocket = require('./socket');
 
@@ -45,6 +46,7 @@ app.use((req, res, next) => {
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/', messageRoutes);
 app.use('/', groqRoutes);
+app.use('/', taskRoutes);
 
 // Public routes
 app.post('/signup', async (req, res) => {
