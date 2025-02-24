@@ -148,7 +148,7 @@ Current prompt: "${prompt}"`;
 // Get workspace tasks
 router.get('/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
   try {
-    const { workspaceId } = req.params;
+    const workspaceId = parseInt(req.params.workspaceId);
     const userId = req.user.id;
 
     // Check workspace access
@@ -156,29 +156,25 @@ router.get('/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
       where: {
         userId_workspaceId: {
           userId,
-          workspaceId: parseInt(workspaceId)
-        }
-      }
+          workspaceId,
+        },
+      },
     });
 
     if (!userWorkspace) {
-      return res.status(403).json({ error: 'Access denied to this workspace' });
+      return res.status(403).json({ error: 'Not a member of this workspace' });
     }
 
     const tasks = await prisma.task.findMany({
-      where: { workspaceId: parseInt(workspaceId) },
+      where: { workspaceId },
       include: {
         assignee: {
           select: {
             id: true,
             username: true,
-            email: true
-          }
-        }
+          },
+        },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
     });
 
     res.json(tasks);
@@ -191,42 +187,42 @@ router.get('/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
 // Update task progress
 router.patch('/workspaces/:workspaceId/tasks/:taskId', isAuth, async (req, res) => {
   try {
-    const { workspaceId, taskId } = req.params;
-    const { progress } = req.body;
+    const workspaceId = parseInt(req.params.workspaceId);
+    const taskId = parseInt(req.params.taskId);
     const userId = req.user.id;
+    const { progress } = req.body;
 
     // Verify workspace membership
     const userWorkspace = await prisma.userWorkspace.findUnique({
       where: {
         userId_workspaceId: {
           userId,
-          workspaceId: parseInt(workspaceId)
-        }
-      }
+          workspaceId,
+        },
+      },
     });
 
     if (!userWorkspace) {
-      return res.status(403).json({ error: 'Access denied to this workspace' });
+      return res.status(403).json({ error: 'Not a member of this workspace' });
+    }
+
+    // Check if task exists and belongs to the workspace
+    const existingTask = await prisma.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!existingTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    if (existingTask.workspaceId !== workspaceId) {
+      return res.status(403).json({ error: 'Task does not belong to this workspace' });
     }
 
     // Update task
     const task = await prisma.task.update({
-      where: {
-        id: parseInt(taskId)
-      },
-      data: {
-        progress,
-        status: progress === 'completed' ? 'completed' : 'pending'
-      },
-      include: {
-        assignee: {
-          select: {
-            id: true,
-            username: true,
-            email: true
-          }
-        }
-      }
+      where: { id: taskId },
+      data: { progress },
     });
 
     // Emit task_updated event
