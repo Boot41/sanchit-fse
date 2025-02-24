@@ -28,6 +28,7 @@ function Home() {
   const [error, setError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [newWorkspacePurpose, setNewWorkspacePurpose] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteError, setInviteError] = useState('');
@@ -122,22 +123,22 @@ function Home() {
 
   const handleCreateWorkspace = async (e) => {
     e.preventDefault();
-    if (!newWorkspaceName.trim()) return;
-
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post('http://localhost:4000/api/workspaces', 
-        { name: newWorkspaceName },
+        { 
+          name: newWorkspaceName,
+          purpose: newWorkspacePurpose || "General Workspace"
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const newWorkspace = response.data;
-      setWorkspaces(prev => [...prev, newWorkspace]);
       setSelectedWorkspace(newWorkspace);
       setNewWorkspaceName('');
+      setNewWorkspacePurpose('');
       setShowCreateForm(false);
     } catch (err) {
       console.error('Error creating workspace:', err);
-      alert('Failed to create workspace');
     }
   };
 
@@ -205,6 +206,13 @@ function Home() {
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 placeholder="Workspace name"
+                required
+              />
+              <input
+                type="text"
+                value={newWorkspacePurpose}
+                onChange={(e) => setNewWorkspacePurpose(e.target.value)}
+                placeholder="Workspace purpose"
                 required
               />
               <div className="form-buttons">

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { Groq } = require('groq-sdk');
 const { isAuth } = require('../middleware/auth');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const groq = new Groq();
 groq.apiKey = process.env.GROQ_API_KEY;
@@ -164,6 +166,75 @@ router.post('/api/groq/json', isAuth, async (req, res) => {
   } catch (error) {
     console.error('Groq JSON mode error:', error);
     res.status(500).json({ error: 'Failed to process JSON request' });
+  }
+});
+
+// Workspace chat endpoint
+router.post('/chat', isAuth, async (req, res) => {
+  try {
+    const { message, workspaceId, context } = req.body;
+    const userId = req.user.id;
+
+    // Verify user's access to workspace
+    const userWorkspace = await prisma.userWorkspace.findFirst({
+      where: {
+        workspaceId: parseInt(workspaceId),
+        userId,
+      },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!userWorkspace) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get workspace purpose for context
+    const workspacePurpose = userWorkspace.workspace.purpose;
+
+    // Create system message with workspace context
+    const systemMessage = `You are an AI assistant for a workspace focused on: ${workspacePurpose}. 
+    Your goal is to help users with tasks, planning, and questions related to this purpose. 
+    Provide specific, actionable advice and suggestions that align with the workspace's focus.`;
+
+    // Create chat completion
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemMessage },
+        ...(context?.previousMessages || []),
+        { role: 'user', content: message }
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 2048,
+    });
+
+    // Store the message
+    await prisma.workspaceMessage.create({
+      data: {
+        content: message,
+        sender: { connect: { id: userId } },
+        workspace: { connect: { id: parseInt(workspaceId) } },
+        role: 'user'
+      }
+    });
+
+    const aiResponse = completion.choices[0].message.content;
+
+    // Store AI response
+    await prisma.workspaceMessage.create({
+      data: {
+        content: aiResponse,
+        workspace: { connect: { id: parseInt(workspaceId) } },
+        role: 'assistant'
+      }
+    });
+
+    res.json({ message: aiResponse });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ error: 'Failed to process chat message', details: error.message });
   }
 });
 

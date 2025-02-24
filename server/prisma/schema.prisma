@@ -26,6 +26,7 @@ model User {
 model Workspace {
   id          Int             @id @default(autoincrement())
   name        String
+  purpose     String         @default("General Workspace")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   creator     User            @relation("WorkspaceCreator", fields: [creatorId], references: [id])

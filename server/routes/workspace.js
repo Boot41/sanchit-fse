@@ -6,7 +6,7 @@ const { isAuth } = require('../middleware/auth');
 // Create a new workspace
 router.post('/', isAuth, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, purpose } = req.body;
     const userId = req.user.id;
 
     if (!name) {
@@ -19,6 +19,7 @@ router.post('/', isAuth, async (req, res) => {
       const workspace = await prisma.workspace.create({
         data: {
           name,
+          purpose: purpose || "General Workspace",
           creatorId: userId,
         },
       });
@@ -60,7 +61,17 @@ router.get('/', isAuth, async (req, res) => {
         userId: req.user.id,
       },
       include: {
-        workspace: true,
+        workspace: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+              },
+            },
+          },
+        },
         user: {
           select: {
             id: true,
@@ -75,6 +86,60 @@ router.get('/', isAuth, async (req, res) => {
   } catch (error) {
     console.error('Get workspaces error:', error);
     res.status(500).json({ error: 'Failed to fetch workspaces' });
+  }
+});
+
+// Get a single workspace
+router.get('/:workspaceId', isAuth, async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+
+    // Check if user is a member of the workspace
+    const userMembership = await prisma.userWorkspace.findFirst({
+      where: {
+        workspaceId: parseInt(workspaceId),
+        userId: req.user.id,
+      },
+    });
+
+    if (!userMembership) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const workspace = await prisma.workspace.findUnique({
+      where: {
+        id: parseInt(workspaceId),
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    res.json(workspace);
+  } catch (error) {
+    console.error('Get workspace error:', error);
+    res.status(500).json({ error: 'Failed to fetch workspace' });
   }
 });
 
