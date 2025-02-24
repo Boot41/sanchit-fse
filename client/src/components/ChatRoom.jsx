@@ -133,14 +133,14 @@ function ChatRoom({ roomId, username }) {
         </div>
         
         <div className="users-sidebar">
-          <div className="sidebar-section">
+          {/* <div className="sidebar-section">
             <h3>Online Users</h3>
             <ul className="users-list">
               {users.map((user, index) => (
                 <li key={index}>{user}</li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           <div className="sidebar-section">
             <h3>Tasks</h3>

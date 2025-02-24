@@ -346,8 +346,23 @@ function Home() {
         )}
       </div>
 
-      {/* AI Chat Box */}
-      <AiChatBox workspaceId={selectedWorkspace?.id} />
+      {/* Right Sidebar with AI Chat */}
+      {selectedWorkspace && (
+        <div className="right-sidebar">
+          <div className="online-users-section">
+            <h3>Online Users</h3>
+            <div className="online-users-list">
+              {workspaceMembers[selectedWorkspace.id]?.map((member) => (
+                <div key={member.user.id} className="online-user-item">
+                  <span className="user-avatar">{member.user.username[0].toUpperCase()}</span>
+                  <span className="user-name">{member.user.username}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <AiChatBox key={selectedWorkspace.id} workspaceId={selectedWorkspace.id} />
+        </div>
+      )}
     </div>
   );
 }
