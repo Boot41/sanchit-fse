@@ -133,7 +133,7 @@ function WorkspaceChat({ workspace, onClose }) {
       console.log('Sending message to workspace:', workspace.workspace.id);
       
       const response = await axios.post(
-        `http://localhost:4000/api/workspaces/${workspace.workspace.id}/messages`,
+        `http://localhost:4000/api/messages/workspaces/${workspace.workspace.id}/messages`,
         { content: messageContent },
         { headers: { Authorization: `Bearer ${token}` } }
       );

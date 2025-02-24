@@ -92,7 +92,7 @@ function ChatRoom({ roomId, username }) {
     if (message.trim() && socket) {
       try {
         const token = localStorage.getItem('token');
-        await axios.post(`http://localhost:4000/api/workspaces/${roomId}/messages`, {
+        await axios.post(`http://localhost:4000/api/messages/workspaces/${roomId}/messages`, {
           content: message.trim()
         }, {
           headers: { Authorization: `Bearer ${token}` }

@@ -4,7 +4,7 @@ const prisma = require('../prisma-client');
 const { isAuth } = require('../middleware/auth');
 
 // Get messages for a workspace
-router.get('/api/workspaces/:workspaceId/messages', isAuth, async (req, res) => {
+router.get('/workspaces/:workspaceId/messages', isAuth, async (req, res) => {
   try {
     const { workspaceId } = req.params;
 
@@ -45,7 +45,7 @@ router.get('/api/workspaces/:workspaceId/messages', isAuth, async (req, res) => 
 });
 
 // Create a new message
-router.post('/api/workspaces/:workspaceId/messages', isAuth, async (req, res) => {
+router.post('/workspaces/:workspaceId/messages', isAuth, async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const { content } = req.body;
