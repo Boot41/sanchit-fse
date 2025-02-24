@@ -454,3 +454,53 @@
   background: var(--bg-hover);
   color: var(--text-primary);
 }
+
+.home-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-header {
+  padding: 1rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.header-buttons button {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.progress-board-btn,
+.back-to-chat-btn {
+  background: #3B82F6;
+  color: white;
+  border: none;
+}
+
+.progress-board-btn:hover,
+.back-to-chat-btn:hover {
+  background: #2563EB;
+}
+
+.invite-btn {
+  background: white;
+  color: #4B5563;
+  border: 1px solid #D1D5DB;
+}
+
+.invite-btn:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}

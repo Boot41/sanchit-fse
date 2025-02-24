@@ -4,6 +4,7 @@ import axios from 'axios';
 import ChatRoom from './ChatRoom';
 import AiChatBox from './AiChatBox';
 import io from 'socket.io-client';
+import KanbanBoard from './KanbanBoard'; // Import KanbanBoard component
 import '../styles/home.css';
 
 // Initialize socket with auth token
@@ -32,6 +33,7 @@ function Home() {
   const [inviteError, setInviteError] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
   const [socket, setSocket] = useState(null);
+  const [showKanban, setShowKanban] = useState(false); // Add showKanban state
 
   // Initialize socket connection
   useEffect(() => {
@@ -166,6 +168,10 @@ function Home() {
     }
   };
 
+  const toggleKanban = () => {
+    setShowKanban(!showKanban);
+  };
+
   if (routeRoomId) {
     return <ChatRoom roomId={routeRoomId} username={user?.username} />;
   }
@@ -286,6 +292,12 @@ function Home() {
                               Invite Members
                             </button>
                           )}
+                          <button 
+                            className="dropdown-btn"
+                            onClick={toggleKanban}
+                          >
+                            Progress Board
+                          </button>
                         </div>
                       )}
                     </div>
@@ -306,10 +318,18 @@ function Home() {
 
       <div className="main-content">
         {selectedWorkspace ? (
-          <ChatRoom 
-            roomId={selectedWorkspace.id}
-            username={user?.username}
-          />
+          showKanban ? (
+            <KanbanBoard
+              workspaceId={selectedWorkspace.id}
+              socket={socket}
+            />
+          ) : (
+            <ChatRoom
+              roomId={selectedWorkspace.id}
+              username={user?.username}
+              socket={socket}
+            />
+          )
         ) : (
           <div className="welcome-message">
             <h2>Welcome to your workspace!</h2>

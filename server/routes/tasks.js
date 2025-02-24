@@ -187,4 +187,61 @@ router.get('/api/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
   }
 });
 
+// Update task progress
+router.patch('/api/workspaces/:workspaceId/tasks/:taskId', isAuth, async (req, res) => {
+  try {
+    const { workspaceId, taskId } = req.params;
+    const { progress } = req.body;
+    const userId = req.user.id;
+
+    // Verify workspace membership
+    const userWorkspace = await prisma.userWorkspace.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId: parseInt(workspaceId)
+        }
+      }
+    });
+
+    if (!userWorkspace) {
+      return res.status(403).json({ error: 'Access denied to this workspace' });
+    }
+
+    // Update task
+    const task = await prisma.task.update({
+      where: {
+        id: parseInt(taskId)
+      },
+      data: {
+        progress,
+        status: progress === 'completed' ? 'completed' : 'pending'
+      },
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            username: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    // Emit task_updated event
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`workspace_${workspaceId}`).emit('task_updated', { task });
+    }
+
+    res.json(task);
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ 
+      error: 'Failed to update task',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

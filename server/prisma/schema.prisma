@@ -11,16 +11,16 @@ datasource db {
 }
 
 model User {
-  id            Int             @id @default(autoincrement())
-  email         String          @unique
-  username      String          @unique
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  username      String    @unique
   password      String
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   workspaces    UserWorkspace[]
   createdWorkspaces Workspace[] @relation("WorkspaceCreator")
   messages      WorkspaceMessage[]
-  assignedTasks Task[]         @relation("TaskAssignee")
+  assignedTasks Task[]    @relation("TaskAssignee")
 }
 
 model Workspace {
@@ -62,18 +62,19 @@ model WorkspaceMessage {
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   title       String
   description String?
   dueDate     DateTime?
   labels      String[]
-  status      String    @default("pending")
+  status      String   @default("pending") // pending, in_progress, review, completed
+  progress    String   @default("tasks")   // tasks, in_progress, review, completed
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   workspaceId Int
-  assignee    User      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignee    User     @relation("TaskAssignee", fields: [assigneeId], references: [id])
   assigneeId  Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([workspaceId])
   @@index([assigneeId])

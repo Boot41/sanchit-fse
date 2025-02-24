@@ -11,6 +11,7 @@ const groqRoutes = require('./routes/groq');
 const taskRoutes = require('./routes/tasks');
 const { isAuth } = require('./middleware/auth');
 const initializeSocket = require('./socket');
+const cors = require('cors');
 
 // Load environment variables
 dotenv.config();
@@ -31,16 +32,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 app.use(express.json());
 
 // CORS middleware
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  credentials: true
+}));
 
 // Initialize socket.io
 app.set('io', io);
