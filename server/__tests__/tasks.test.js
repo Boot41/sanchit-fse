@@ -7,7 +7,16 @@ jest.mock('../prisma-client', () => {
         workspaceId: 1,
         role: 'member'
       }),
-      findMany: jest.fn().mockResolvedValue([]),
+      findMany: jest.fn().mockResolvedValue([{
+        userId: 1,
+        workspaceId: 1,
+        role: 'member',
+        user: {
+          id: 1,
+          email: 'test@example.com',
+          username: 'testuser'
+        }
+      }]),
       findFirst: jest.fn().mockResolvedValue({
         userId: 1,
         workspaceId: 1,
@@ -21,7 +30,16 @@ jest.mock('../prisma-client', () => {
         description: "Stay hydrated",
         status: "pending",
         workspaceId: 1,
-        assigneeId: 1
+        assigneeId: 1,
+        assignee: {
+          id: 1,
+          email: 'test@example.com',
+          username: 'testuser'
+        },
+        workspace: {
+          id: 1,
+          name: 'Test Workspace'
+        }
       }),
       findUnique: jest.fn().mockResolvedValue({
         id: 1,
@@ -29,7 +47,16 @@ jest.mock('../prisma-client', () => {
         description: "Stay hydrated",
         status: "pending",
         workspaceId: 1,
-        assigneeId: 1
+        assigneeId: 1,
+        assignee: {
+          id: 1,
+          email: 'test@example.com',
+          username: 'testuser'
+        },
+        workspace: {
+          id: 1,
+          name: 'Test Workspace'
+        }
       }),
       findMany: jest.fn().mockResolvedValue([{
         id: 1,
@@ -37,7 +64,16 @@ jest.mock('../prisma-client', () => {
         description: "Stay hydrated",
         status: "pending",
         workspaceId: 1,
-        assigneeId: 1
+        assigneeId: 1,
+        assignee: {
+          id: 1,
+          email: 'test@example.com',
+          username: 'testuser'
+        },
+        workspace: {
+          id: 1,
+          name: 'Test Workspace'
+        }
       }]),
       update: jest.fn().mockResolvedValue({
         id: 1,
@@ -45,7 +81,16 @@ jest.mock('../prisma-client', () => {
         description: "Stay hydrated",
         status: "completed",
         workspaceId: 1,
-        assigneeId: 1
+        assigneeId: 1,
+        assignee: {
+          id: 1,
+          email: 'test@example.com',
+          username: 'testuser'
+        },
+        workspace: {
+          id: 1,
+          name: 'Test Workspace'
+        }
       })
     },
     user: {
@@ -112,174 +157,216 @@ describe('Tasks API Tests', () => {
   let authToken;
   let authHeader;
 
-  beforeAll(async () => {
+  beforeEach(() => {
     testUser = {
       id: 1,
       email: 'test@example.com',
-      username: 'testuser',
-      password: await bcrypt.hash('password123', 10),
+      username: 'testuser'
     };
-    
-    authToken = jwt.sign(
-      { userId: testUser.id },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '1h' }
-    );
-    authHeader = `Bearer ${authToken}`;
-    app.set('io', mockIo);
+    authToken = jwt.sign({ userId: testUser.id }, process.env.JWT_SECRET || 'test-secret');
+    authHeader = { Authorization: `Bearer ${authToken}` };
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    prisma.user.findUnique.mockResolvedValue(testUser);
-  });
+  describe('PUT /api/tasks/:taskId/details', () => {
+    const taskId = 1;
+    const updateData = {
+      title: 'Updated Task',
+      description: 'Updated description',
+      dueDate: '2024-03-01',
+      labels: ['important'],
+      assigneeId: 2,
+      status: 'in_progress'
+    };
 
-  afterAll(() => {
-    jest.restoreAllMocks();
-  });
-
-  describe('POST /api/tasks/workspaces/:workspaceId/ai', () => {
-    const workspaceId = 1;
-    const taskPrompt = "remind bob to submit report by next friday";
-
-    it('should handle AI task creation', async () => {
-      // Mock workspace access check
-      prisma.userWorkspace.findFirst.mockResolvedValueOnce({
-        userId: testUser.id,
-        workspaceId,
+    beforeEach(() => {
+      prisma.task.findUnique.mockResolvedValue({
+        id: taskId,
+        workspaceId: 1,
+        title: 'Original Task',
+        description: 'Original description',
+        status: 'pending',
+        assigneeId: 1
       });
-
-      // Mock workspace members
-      prisma.userWorkspace.findMany.mockResolvedValueOnce([
-        {
-          userId: 2,
-          workspaceId,
-          user: { id: 2, username: 'bob', email: 'bob@example.com' }
-        }
-      ]);
-
-      // Mock AI response
-      const mockGroqInstance = {
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValueOnce({
-              choices: [{
-                message: {
-                  content: JSON.stringify({
-                    title: "Submit report",
-                    description: "Reminder to submit report",
-                    assigneeName: "bob",
-                    dueDate: "2025-03-01",
-                    labels: ["reminder", "work"]
-                  })
-                }
-              }]
-            })
-          }
-        }
-      };
-      Groq.mockImplementation(() => mockGroqInstance);
-
-      // Mock task creation
-      prisma.task.create.mockResolvedValueOnce({
-        id: 1,
-        title: "Submit report",
-        assignee: { id: 2, username: 'bob', email: 'bob@example.com' }
-      });
-
-      const response = await request(app)
-        .post(`/api/tasks/workspaces/${workspaceId}/ai`)
-        .set('Authorization', authHeader)
-        .send({ prompt: taskPrompt });
-
-      expect(response.status).toBeLessThan(500);
-      expect(response.body).toBeDefined();
     });
 
-    it('should handle workspace access denial', async () => {
-      // Mock no workspace access
-      prisma.userWorkspace.findFirst.mockResolvedValueOnce(null);
-
+    it('should update a task successfully', async () => {
       const response = await request(app)
-        .post(`/api/tasks/workspaces/${workspaceId}/ai`)
-        .set('Authorization', authHeader)
-        .send({ prompt: taskPrompt });
+        .put(`/api/tasks/${taskId}/details`)
+        .set(authHeader)
+        .send(updateData);
 
-      expect(response.status).toBeGreaterThanOrEqual(400);
-      expect(response.body).toBeDefined();
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('Task updated successfully');
+      expect(response.body.task).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: taskId },
+        data: expect.objectContaining(updateData),
+        include: { assignee: true, workspace: true }
+      });
     });
 
-    it('should handle AI processing errors', async () => {
-      // Mock workspace access
-      prisma.userWorkspace.findFirst.mockResolvedValueOnce({
-        userId: testUser.id,
-        workspaceId,
-      });
-
-      // Mock workspace members
-      prisma.userWorkspace.findMany.mockResolvedValueOnce([]);
-
-      // Mock AI error
-      const mockGroqInstance = {
-        chat: {
-          completions: {
-            create: jest.fn().mockRejectedValueOnce(new Error('AI Error'))
-          }
-        }
-      };
-      Groq.mockImplementation(() => mockGroqInstance);
+    it('should return 404 if task not found', async () => {
+      prisma.task.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .post(`/api/tasks/workspaces/${workspaceId}/ai`)
-        .set('Authorization', authHeader)
-        .send({ prompt: taskPrompt });
+        .put(`/api/tasks/${taskId}/details`)
+        .set(authHeader)
+        .send(updateData);
 
-      expect(response.status).toBeGreaterThanOrEqual(400);
-      expect(response.body).toBeDefined();
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe('Task not found');
+    });
+
+    it('should return 403 if user is not a member of the workspace', async () => {
+      prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .put(`/api/tasks/${taskId}/details`)
+        .set(authHeader)
+        .send(updateData);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Not authorized to update this task');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      prisma.task.update.mockRejectedValueOnce(new Error('Database error'));
+
+      const response = await request(app)
+        .put(`/api/tasks/${taskId}/details`)
+        .set(authHeader)
+        .send(updateData);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to update task');
     });
   });
 
   describe('GET /api/tasks/workspaces/:workspaceId/tasks', () => {
     const workspaceId = 1;
 
-    it('should handle tasks retrieval', async () => {
-      // Mock workspace access
-      prisma.userWorkspace.findFirst.mockResolvedValueOnce({
-        userId: testUser.id,
-        workspaceId,
-      });
-
-      // Mock tasks
-      prisma.task.findMany.mockResolvedValueOnce([
-        {
-          id: 1,
-          title: 'Test Task',
-          assignee: { id: 1, username: 'testuser' }
-        }
-      ]);
-
+    it('should get all tasks for a workspace', async () => {
       const response = await request(app)
         .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
-        .set('Authorization', authHeader);
+        .set('Authorization', `Bearer ${authToken}`);
 
-      expect(response.status).toBeLessThan(500);
-      expect(response.body).toBeDefined();
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(prisma.task.findMany).toHaveBeenCalledWith({
+        where: { workspaceId: parseInt(workspaceId) },
+        include: { assignee: true, workspace: true },
+        orderBy: { createdAt: 'desc' }
+      });
     });
 
-    it('should handle workspace access denial', async () => {
-      // Mock no workspace access
-      prisma.userWorkspace.findFirst.mockResolvedValueOnce(null);
+    it('should handle unauthorized access appropriately', async () => {
+      const response = await request(app)
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
+        .set('Authorization', 'Bearer invalid-token');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should return 403 if user is not a workspace member', async () => {
+      prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
-        .set('Authorization', authHeader);
+        .set('Authorization', `Bearer ${authToken}`);
 
-      expect(response.status).toBeGreaterThanOrEqual(400);
-      expect(response.body).toBeDefined();
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Access denied to this workspace');
+    });
+
+    it('should return 401 if not authenticated', async () => {
+      const response = await request(app)
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      prisma.task.findMany.mockRejectedValueOnce(new Error('Database error'));
+
+      const response = await request(app)
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to fetch tasks');
     });
   });
 
-  describe('POST /api/workspaces/:workspaceId/tasks/create-from-prompt', () => {
+  describe('PATCH /api/tasks/workspaces/:workspaceId/tasks/:taskId/progress', () => {
+    const workspaceId = 1;
+    const taskId = 1;
+    const updateData = {
+      progress: 'done'
+    };
+
+    beforeEach(() => {
+      prisma.task.findUnique.mockResolvedValue({
+        id: taskId,
+        workspaceId: parseInt(workspaceId),
+        status: 'pending'
+      });
+    });
+
+    it('should update task progress', async () => {
+      const response = await request(app)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}/progress`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.task).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: parseInt(taskId) },
+        data: { progress: updateData.progress },
+        include: { assignee: true }
+      });
+    });
+
+    it('should return 403 if user is not a member of the workspace', async () => {
+      prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}/progress`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Not a member of this workspace');
+    });
+
+    it('should return 404 if task not found', async () => {
+      prisma.task.findUnique.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}/progress`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData);
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe('Task not found');
+    });
+
+    it('should handle database errors', async () => {
+      prisma.task.update.mockRejectedValueOnce(new Error('Database error'));
+
+      const response = await request(app)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}/progress`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to update task progress');
+    });
+  });
+
+  describe('POST /api/tasks/workspaces/:workspaceId/tasks/from-prompt', () => {
     const workspaceId = 1;
     const prompt = 'Create a task to remind me to drink water';
 
@@ -339,8 +426,8 @@ describe('Tasks API Tests', () => {
       prisma.task.create.mockResolvedValueOnce(mockTask);
 
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ prompt });
 
       // More flexible status code check
@@ -355,8 +442,8 @@ describe('Tasks API Tests', () => {
       prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ prompt });
 
       // More flexible error status check
@@ -367,8 +454,8 @@ describe('Tasks API Tests', () => {
 
     it('should handle missing prompt', async () => {
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({});
 
       expect(response.status).toBe(400);
@@ -391,8 +478,8 @@ describe('Tasks API Tests', () => {
       }));
 
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ prompt });
 
       expect(response.status).toBe(500);
@@ -423,8 +510,8 @@ describe('Tasks API Tests', () => {
       }));
 
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ prompt });
 
       expect(response.status).toBe(500);
@@ -449,8 +536,8 @@ describe('Tasks API Tests', () => {
       prisma.task.create.mockRejectedValueOnce(new Error('Database error'));
 
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ prompt });
 
       expect(response.status).toBe(500);
@@ -461,8 +548,8 @@ describe('Tasks API Tests', () => {
       prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
-        .set('Authorization', authHeader)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ prompt });
 
       expect(response.status).toBe(403);
@@ -471,14 +558,14 @@ describe('Tasks API Tests', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app)
-        .post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`)
+        .post(`/api/tasks/workspaces/${workspaceId}/tasks/from-prompt`)
         .send({ prompt });
 
       expect(response.status).toBe(401);
     });
   });
 
-  describe('GET /api/workspaces/:workspaceId/tasks', () => {
+  describe('GET /api/tasks/workspaces/:workspaceId/tasks', () => {
     const workspaceId = 1;
 
     beforeEach(() => {
@@ -504,8 +591,8 @@ describe('Tasks API Tests', () => {
       prisma.task.findMany.mockResolvedValueOnce(mockTasks);
 
       const response = await request(app)
-        .get(`/api/workspaces/${workspaceId}/tasks`)
-        .set('Authorization', authHeader);
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       // More flexible status check
       expect(response.status).toBeLessThan(400);
@@ -518,8 +605,8 @@ describe('Tasks API Tests', () => {
       prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .get(`/api/workspaces/${workspaceId}/tasks`)
-        .set('Authorization', authHeader);
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       // More flexible error status check
       expect(response.status).toBeGreaterThanOrEqual(400);
@@ -531,8 +618,8 @@ describe('Tasks API Tests', () => {
       prisma.userWorkspace.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .get(`/api/workspaces/${workspaceId}/tasks`)
-        .set('Authorization', authHeader);
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('Access denied to this workspace');
@@ -540,13 +627,13 @@ describe('Tasks API Tests', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app)
-        .get(`/api/workspaces/${workspaceId}/tasks`);
+        .get(`/api/tasks/workspaces/${workspaceId}/tasks`);
 
       expect(response.status).toBe(401);
     });
   });
 
-  describe('PATCH /api/workspaces/:workspaceId/tasks/:taskId', () => {
+  describe('PATCH /api/tasks/workspaces/:workspaceId/tasks/:taskId', () => {
     const workspaceId = 1;
     const taskId = 1;
     const updateData = {
@@ -576,8 +663,8 @@ describe('Tasks API Tests', () => {
       });
 
       const response = await request(app)
-        .patch(`/api/workspaces/${workspaceId}/tasks/${taskId}`)
-        .set('Authorization', authHeader)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send(updateData);
 
       expect(response.status).toBeLessThan(500);
@@ -596,8 +683,8 @@ describe('Tasks API Tests', () => {
       prisma.task.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
-        .patch(`/api/workspaces/${workspaceId}/tasks/${taskId}`)
-        .set('Authorization', authHeader)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send(updateData);
 
       expect(response.status).toBeGreaterThanOrEqual(400);
@@ -620,8 +707,8 @@ describe('Tasks API Tests', () => {
       });
 
       const response = await request(app)
-        .patch(`/api/workspaces/${workspaceId}/tasks/${taskId}`)
-        .set('Authorization', authHeader)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send(updateData);
 
       expect(response.status).toBeGreaterThanOrEqual(400);
@@ -640,8 +727,8 @@ describe('Tasks API Tests', () => {
       prisma.task.findUnique.mockRejectedValueOnce(new Error('Database error'));
 
       const response = await request(app)
-        .patch(`/api/workspaces/${workspaceId}/tasks/${taskId}`)
-        .set('Authorization', authHeader)
+        .patch(`/api/tasks/workspaces/${workspaceId}/tasks/${taskId}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send(updateData);
 
       expect(response.status).toBeGreaterThanOrEqual(500);

@@ -28,7 +28,7 @@ function Login() {
     setError('');
     
     try {
-      const endpoint = isLogin ? '/login' : '/signup';
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
       const response = await axios.post(`http://localhost:4000${endpoint}`, formData);
       
       // Use the auth context to handle login

@@ -314,6 +314,7 @@ html, body {
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
+  margin: 0.5rem 0;
 }
 
 .dropdown-btn:hover {
