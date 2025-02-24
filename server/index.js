@@ -47,36 +47,19 @@ app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/groq', groqRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api', taskRoutes);
 
-// Public routes
-app.post('/signup', async (req, res) => {
+// Auth routes
+app.post('/api/auth/signup', async (req, res) => {
   try {
-    console.log('Signup request received:', req.body);
-    const { email, username, password } = req.body;
-
-    // Validate input
-    if (!email || !username || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
+    const { email, password, username } = req.body;
 
     // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { username }
-        ]
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true
-      }
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'Email or username already exists' });
+      return res.status(400).json({ error: 'User already exists' });
     }
 
     // Hash password
@@ -86,67 +69,59 @@ app.post('/signup', async (req, res) => {
     const user = await prisma.user.create({
       data: {
         email,
+        password: hashedPassword,
         username,
-        password: hashedPassword
       },
-      select: {
-        id: true,
-        email: true,
-        username: true
-      }
     });
 
-    // Generate token
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+    // Generate JWT
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET);
 
-    console.log('User created successfully:', { user, token });
-    res.json({ user, token });
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.status(201).json({
+      user: userWithoutPassword,
+      token,
+    });
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: 'Error creating user' });
   }
 });
 
-app.post('/login', async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
 
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        password: true
-      }
     });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Verify password
+    // Check password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate token
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+    // Generate JWT
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET);
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
-    res.json({ user: userWithoutPassword, token });
+    res.json({
+      user: userWithoutPassword,
+      token,
+    });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Failed to login' });
+    res.status(500).json({ error: 'Error logging in' });
   }
 });
 
@@ -350,7 +325,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server
-httpServer.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Only start the server if we're not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  httpServer.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+module.exports = { app, httpServer };
