@@ -77,16 +77,9 @@ function initializeSocket(io) {
         
         // Verify the socket is in the room
         const rooms = Array.from(socket.rooms);
-        console.log(`Socket ${socket.id} is in rooms:`, rooms);
-        
         if (!rooms.includes(room)) {
-          console.log(`Socket ${socket.id} is not in room ${room}, rejoining...`);
           await socket.join(room);
         }
-        
-        // Get all sockets in the room
-        const socketsInRoom = await io.in(room).allSockets();
-        console.log(`Broadcasting message to ${socketsInRoom.size} clients in room ${room}`);
         
         // Broadcast to all clients in the room except the sender
         socket.to(room).emit('workspace_message', {
@@ -95,6 +88,42 @@ function initializeSocket(io) {
         });
       } catch (error) {
         console.error('Error broadcasting message:', error);
+      }
+    });
+
+    // Handle task updates
+    socket.on('task_update', async ({ workspaceId, task }) => {
+      try {
+        const room = `workspace_${workspaceId}`;
+        
+        // Verify the socket is in the room
+        const rooms = Array.from(socket.rooms);
+        if (!rooms.includes(room)) {
+          await socket.join(room);
+        }
+        
+        // Broadcast to all clients in the room except the sender
+        socket.to(room).emit('task_updated', { task });
+      } catch (error) {
+        console.error('Error broadcasting task update:', error);
+      }
+    });
+
+    // Handle task creation
+    socket.on('task_create', async ({ workspaceId, task }) => {
+      try {
+        const room = `workspace_${workspaceId}`;
+        
+        // Verify the socket is in the room
+        const rooms = Array.from(socket.rooms);
+        if (!rooms.includes(room)) {
+          await socket.join(room);
+        }
+        
+        // Broadcast to all clients in the room except the sender
+        socket.to(room).emit('task_created', { task });
+      } catch (error) {
+        console.error('Error broadcasting task creation:', error);
       }
     });
 

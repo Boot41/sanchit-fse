@@ -40,6 +40,13 @@ app.use(cors({
 
 // Initialize socket.io
 app.set('io', io);
+
+// Add socket.io middleware
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 initializeSocket(io);
 
 // Use routes
