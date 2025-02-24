@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { Groq } = require('groq-sdk');
 const { isAuth } = require('../middleware/auth');
+const { Groq } = require("groq-sdk");
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const groq = new Groq();
-groq.apiKey = process.env.GROQ_API_KEY;
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
-// Store conversations in memory (for demo purposes)
-// In production, you should use a database
+// Store conversations in memory (replace with database in production)
 const conversations = new Map();
 
 // Initialize a new conversation
-router.post('/api/groq/conversations', isAuth, async (req, res) => {
+router.post('/conversations', isAuth, async (req, res) => {
   try {
-    const { initialMessage } = req.body;
+    const { initialMessage, systemMessage } = req.body;
     const userId = req.user.id;
 
     const messages = [];
@@ -23,98 +23,155 @@ router.post('/api/groq/conversations', isAuth, async (req, res) => {
       const chatCompletion = await groq.chat.completions.create({
         messages: [
           {
+            role: "system",
+            content: systemMessage || "You are an AI assistant helping with workspace tasks and questions."
+          },
+          {
             role: "user",
             content: initialMessage
           }
         ],
         model: "mixtral-8x7b-32768",
-        temperature: 0.7,
+        temperature: 0.9,
         max_tokens: 1024,
       });
 
-      const assistantMessage = chatCompletion.choices[0]?.message?.content;
-      messages.push(
-        { role: 'user', content: initialMessage },
-        { role: 'assistant', content: assistantMessage }
-      );
+      if (chatCompletion.choices && chatCompletion.choices[0]) {
+        messages.push({
+          role: "user",
+          content: initialMessage
+        });
+        messages.push({
+          role: "assistant",
+          content: chatCompletion.choices[0].message.content
+        });
+      }
     }
 
+    // Create conversation object
     const conversationId = Date.now().toString();
-    conversations.set(conversationId, {
+    const conversation = {
+      id: conversationId,
       userId,
-      messages
-    });
+      messages,
+      systemMessage
+    };
 
+    // Store conversation
+    conversations.set(conversationId, conversation);
+    console.log('Created conversation:', conversationId, 'Total conversations:', conversations.size);
+
+    // Send response
     res.json({
-      conversationId,
-      messages
+      conversationId: conversation.id,
+      messages: conversation.messages
     });
   } catch (error) {
-    console.error('Groq conversation error:', error);
-    res.status(500).json({ error: 'Failed to create conversation' });
+    console.error('Error in chat completion:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Continue a conversation
-router.post('/api/groq/conversations/:conversationId/messages', isAuth, async (req, res) => {
+// Continue an existing conversation
+router.post('/conversations/:conversationId/messages', isAuth, async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { message } = req.body;
     const userId = req.user.id;
 
+    console.log('Looking for conversation:', conversationId);
+    console.log('Available conversations:', Array.from(conversations.keys()));
+
+    // Get existing conversation
     const conversation = conversations.get(conversationId);
     if (!conversation) {
+      console.log('Conversation not found:', conversationId);
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
+    // Verify user owns the conversation
     if (conversation.userId !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Not authorized to access this conversation' });
     }
 
+    // Build message history for context
+    const messageHistory = [
+      {
+        role: "system",
+        content: conversation.systemMessage || "You are an AI assistant helping with workspace tasks and questions."
+      },
+      ...conversation.messages,
+      {
+        role: "user",
+        content: message
+      }
+    ];
+
+    // Get AI response
     const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        ...conversation.messages,
-        {
-          role: "user",
-          content: message
-        }
-      ],
+      messages: messageHistory,
       model: "mixtral-8x7b-32768",
-      temperature: 0.7,
+      temperature: 0.9,
       max_tokens: 1024,
     });
 
-    const assistantMessage = chatCompletion.choices[0]?.message?.content;
+    if (!chatCompletion.choices || !chatCompletion.choices[0]) {
+      throw new Error('No response from AI');
+    }
+
+    // Add new messages to conversation
     conversation.messages.push(
-      { role: 'user', content: message },
-      { role: 'assistant', content: assistantMessage }
+      {
+        role: "user",
+        content: message
+      },
+      {
+        role: "assistant",
+        content: chatCompletion.choices[0].message.content
+      }
     );
 
+    // Update conversation in storage
+    conversations.set(conversationId, conversation);
+    console.log('Updated conversation:', conversationId, 'Messages:', conversation.messages.length);
+
+    // Send response
     res.json({
-      conversationId,
-      messages: conversation.messages
+      messages: [
+        {
+          role: "user",
+          content: message
+        },
+        {
+          role: "assistant",
+          content: chatCompletion.choices[0].message.content
+        }
+      ]
     });
   } catch (error) {
-    console.error('Groq message error:', error);
-    res.status(500).json({ error: 'Failed to process message' });
+    console.error('Error in chat completion:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get conversation history
-router.get('/api/groq/conversations/:conversationId', isAuth, async (req, res) => {
+router.get('/conversations/:conversationId', isAuth, async (req, res) => {
   try {
     const { conversationId } = req.params;
     const userId = req.user.id;
 
+    // Get existing conversation
     const conversation = conversations.get(conversationId);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
+    // Verify user owns the conversation
     if (conversation.userId !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Not authorized to access this conversation' });
     }
 
+    // Send response
     res.json({
       conversationId,
       messages: conversation.messages
@@ -126,7 +183,7 @@ router.get('/api/groq/conversations/:conversationId', isAuth, async (req, res) =
 });
 
 // JSON mode endpoint
-router.post('/api/groq/json', isAuth, async (req, res) => {
+router.post('/json', isAuth, async (req, res) => {
   try {
     const { prompt, schema } = req.body;
 

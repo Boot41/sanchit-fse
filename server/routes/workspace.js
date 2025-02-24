@@ -94,29 +94,18 @@ router.get('/:workspaceId', isAuth, async (req, res) => {
   try {
     const { workspaceId } = req.params;
 
-    // Check if user is a member of the workspace
-    const userMembership = await prisma.userWorkspace.findFirst({
-      where: {
-        workspaceId: parseInt(workspaceId),
-        userId: req.user.id,
-      },
-    });
-
-    if (!userMembership) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
+    // Get workspace with all related data
     const workspace = await prisma.workspace.findUnique({
       where: {
-        id: parseInt(workspaceId),
+        id: parseInt(workspaceId)
       },
       include: {
         creator: {
           select: {
             id: true,
             username: true,
-            email: true,
-          },
+            email: true
+          }
         },
         members: {
           include: {
@@ -124,19 +113,90 @@ router.get('/:workspaceId', isAuth, async (req, res) => {
               select: {
                 id: true,
                 username: true,
-                email: true,
-              },
-            },
-          },
+                email: true
+              }
+            }
+          }
         },
-      },
+        messages: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 10,
+          include: {
+            sender: {
+              select: {
+                id: true,
+                username: true
+              }
+            }
+          }
+        },
+        tasks: {
+          include: {
+            assignee: {
+              select: {
+                id: true,
+                username: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
     });
 
     if (!workspace) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
 
-    res.json(workspace);
+    // Check if user is a member
+    const userMembership = await prisma.userWorkspace.findFirst({
+      where: {
+        workspaceId: parseInt(workspaceId),
+        userId: req.user.id
+      }
+    });
+
+    if (!userMembership) {
+      return res.status(403).json({ error: 'Not a member of this workspace' });
+    }
+
+    // Transform the data to match the expected structure
+    const response = {
+      id: workspace.id,
+      name: workspace.name,
+      purpose: workspace.purpose,
+      createdAt: workspace.createdAt,
+      creator: workspace.creator,
+      members: workspace.members.map(m => ({
+        id: m.user.id,
+        username: m.user.username,
+        email: m.user.email,
+        role: m.role,
+        joinedAt: m.joinedAt
+      })),
+      recentMessages: workspace.messages.map(m => ({
+        id: m.id,
+        content: m.content,
+        sender: m.sender,
+        createdAt: m.createdAt
+      })),
+      tasks: workspace.tasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        progress: t.progress,
+        dueDate: t.dueDate,
+        assignee: t.assignee
+      }))
+    };
+
+    console.log('Workspace response:', response);
+    res.json(response);
   } catch (error) {
     console.error('Get workspace error:', error);
     res.status(500).json({ error: 'Failed to fetch workspace' });

@@ -44,9 +44,10 @@ initializeSocket(io);
 
 // Use routes
 app.use('/api/workspaces', workspaceRoutes);
-app.use('/', messageRoutes);
-app.use('/', groqRoutes);
-app.use('/', taskRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/groq', groqRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api', taskRoutes);
 
 // Public routes
 app.post('/signup', async (req, res) => {

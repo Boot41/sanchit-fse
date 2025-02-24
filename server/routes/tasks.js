@@ -5,11 +5,12 @@ const { isAuth } = require('../middleware/auth');
 const { Groq } = require('groq-sdk');
 
 const prisma = new PrismaClient();
-const groq = new Groq();
-groq.apiKey = process.env.GROQ_API_KEY;
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
 // Create task from natural language
-router.post('/api/workspaces/:workspaceId/tasks/create-from-prompt', isAuth, async (req, res) => {
+router.post('/workspaces/:workspaceId/tasks/create-from-prompt', isAuth, async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const { prompt } = req.body;
@@ -145,7 +146,7 @@ Current prompt: "${prompt}"`;
 });
 
 // Get workspace tasks
-router.get('/api/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
+router.get('/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const userId = req.user.id;
@@ -188,7 +189,7 @@ router.get('/api/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
 });
 
 // Update task progress
-router.patch('/api/workspaces/:workspaceId/tasks/:taskId', isAuth, async (req, res) => {
+router.patch('/workspaces/:workspaceId/tasks/:taskId', isAuth, async (req, res) => {
   try {
     const { workspaceId, taskId } = req.params;
     const { progress } = req.body;
