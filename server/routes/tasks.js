@@ -15,6 +15,10 @@ router.post('/api/workspaces/:workspaceId/tasks/create-from-prompt', isAuth, asy
     const { prompt } = req.body;
     const userId = req.user.id;
 
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
     // Check if user is a member of the workspace
     const userWorkspace = await prisma.userWorkspace.findUnique({
       where: {
@@ -35,71 +39,76 @@ router.post('/api/workspaces/:workspaceId/tasks/create-from-prompt', isAuth, asy
       include: { user: true }
     });
 
-    const memberIds = workspaceMembers.map(member => member.userId);
+    const systemMessage = `You are a task creation assistant. Extract task information from the user's prompt and respond in JSON format.
+Follow these rules:
+1. Title should be concise (2-5 words) and action-oriented
+2. If someone is mentioned with "remind" or "tell", they should be identified as the assignee
+3. Any dates mentioned should be set as the due date
+4. Extract relevant labels from the context
 
-    // Define the task schema
-    const taskSchema = {
-      type: "object",
-      properties: {
-        title: { type: "string", description: "Task title (required)" },
-        description: { type: "string", description: "Detailed task description" },
-        dueDate: { type: "string", description: "Due date in ISO format (YYYY-MM-DD)" },
-        labels: { 
-          type: "array", 
-          items: { type: "string" },
-          description: "List of labels/tags for the task"
-        },
-        assigneeId: { 
-          type: "number",
-          description: "User ID of the assignee (must be a workspace member)",
-          enum: memberIds
-        }
-      },
-      required: ["title"]
-    };
+Example:
+User: "remind rob to drink water"
+Response: {
+  "title": "Drink water",
+  "description": "Reminder to drink water",
+  "assigneeName": "rob",
+  "dueDate": null,
+  "labels": ["reminder", "health"]
+}
 
-    const systemMessage = `You are a task creation assistant that responds in JSON format. Create a task based on the user's prompt.
-The task must follow this schema: ${JSON.stringify(taskSchema)}
-Available workspace member IDs are: ${memberIds.join(', ')}
-If no specific assignee is mentioned, assign to the creator (ID: ${userId}).
-If no due date is specified, leave it null.
-If no labels are specified, provide an empty array.`;
+Current prompt: "${prompt}"`;
 
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: systemMessage
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      model: "mixtral-8x7b-32768",
-      temperature: 0.7,
-      max_tokens: 1024,
-      response_format: { type: "json_object" }
-    });
-
-    const response = chatCompletion.choices[0]?.message?.content;
-    const taskData = JSON.parse(response);
-
-    // Validate assigneeId is a workspace member
-    if (taskData.assigneeId && !memberIds.includes(taskData.assigneeId)) {
-      return res.status(400).json({ 
-        error: 'Invalid assignee ID. Assignee must be a workspace member.' 
+    let parsedTask;
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: systemMessage
+          }
+        ],
+        model: "mixtral-8x7b-32768",
+        temperature: 0.7,
+        max_tokens: 1024,
+        response_format: { type: "json_object" }
       });
+
+      const response = chatCompletion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error('No response from AI');
+      }
+      
+      parsedTask = JSON.parse(response);
+      if (!parsedTask.title) {
+        throw new Error('AI response missing required title field');
+      }
+    } catch (error) {
+      console.error('AI processing error:', error);
+      return res.status(500).json({ 
+        error: 'Failed to process task with AI',
+        details: error.message
+      });
+    }
+
+    // Find assignee by username
+    let assigneeId = userId; // Default to creator
+    if (parsedTask.assigneeName) {
+      const assignee = workspaceMembers.find(
+        member => member.user.username.toLowerCase() === parsedTask.assigneeName.toLowerCase()
+      );
+      if (assignee) {
+        assigneeId = assignee.userId;
+      }
     }
 
     // Create the task
     const task = await prisma.task.create({
       data: {
-        title: taskData.title,
-        description: taskData.description || null,
-        dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-        labels: taskData.labels || [],
-        assigneeId: taskData.assigneeId || userId,
+        title: parsedTask.title,
+        description: parsedTask.description || null,
+        dueDate: parsedTask.dueDate ? new Date(parsedTask.dueDate) : null,
+        labels: parsedTask.labels || [],
+        assigneeId: assigneeId,
         workspaceId: parseInt(workspaceId),
         status: "pending"
       },
@@ -114,16 +123,23 @@ If no labels are specified, provide an empty array.`;
       }
     });
 
+    // Get io instance and emit event
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`workspace_${workspaceId}`).emit('task_created', { task });
+    } else {
+      console.warn('Socket.io instance not found');
+    }
+
     res.json({
       message: 'Task created successfully',
       task
     });
-
   } catch (error) {
     console.error('Task creation error:', error);
     res.status(500).json({ 
       error: 'Failed to create task',
-      details: error.message 
+      details: error.message
     });
   }
 });

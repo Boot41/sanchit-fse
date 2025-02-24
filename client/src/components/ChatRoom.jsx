@@ -8,6 +8,7 @@ function ChatRoom({ roomId, username }) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -37,25 +38,44 @@ function ChatRoom({ roomId, username }) {
       scrollToBottom();
     });
 
-    // Fetch initial messages
-    const fetchMessages = async () => {
+    // Listen for task_created events
+    socket.on('task_created', async ({ task }) => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`http://localhost:4000/api/workspaces/${roomId}/messages`, {
+        const response = await axios.get(`http://localhost:4000/api/workspaces/${roomId}/tasks`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setMessages(response.data.map(msg => ({
+        setTasks(response.data);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      }
+    });
+
+    // Fetch initial messages and tasks
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const [messagesRes, tasksRes] = await Promise.all([
+          axios.get(`http://localhost:4000/api/workspaces/${roomId}/messages`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get(`http://localhost:4000/api/workspaces/${roomId}/tasks`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+        setMessages(messagesRes.data.map(msg => ({
           message: msg.content,
           username: msg.sender.username,
           timestamp: msg.createdAt
         })));
+        setTasks(tasksRes.data);
         scrollToBottom();
       } catch (error) {
-        console.error('Error fetching messages:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
-    fetchMessages();
+    fetchData();
 
     return () => {
       socket.emit('leave_room', { roomId, username });
@@ -63,6 +83,7 @@ function ChatRoom({ roomId, username }) {
       socket.off('user_left');
       socket.off('receive_message');
       socket.off('previous_messages');
+      socket.off('task_created');
     };
   }, [socket, roomId, username]);
 
@@ -112,12 +133,40 @@ function ChatRoom({ roomId, username }) {
         </div>
         
         <div className="users-sidebar">
-          <h3>Online Users</h3>
-          <ul>
-            {users.map((user, index) => (
-              <li key={index}>{user}</li>
-            ))}
-          </ul>
+          <div className="sidebar-section">
+            <h3>Online Users</h3>
+            <ul className="users-list">
+              {users.map((user, index) => (
+                <li key={index}>{user}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="sidebar-section">
+            <h3>Tasks</h3>
+            <ul className="tasks-list">
+              {tasks.map((task) => (
+                <li key={task.id} className={`task-item ${task.status}`}>
+                  <div className="task-title">{task.title}</div>
+                  <div className="task-meta">
+                    <span className="task-assignee">@{task.assignee.username}</span>
+                    {task.dueDate && (
+                      <span className="task-due-date">
+                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  {task.labels.length > 0 && (
+                    <div className="task-labels">
+                      {task.labels.map((label, i) => (
+                        <span key={i} className="task-label">{label}</span>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 

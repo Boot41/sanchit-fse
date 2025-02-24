@@ -1,8 +1,20 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import ChatRoom from './ChatRoom';
+import AiChatBox from './AiChatBox';
+import io from 'socket.io-client';
 import '../styles/home.css';
+
+// Initialize socket with auth token
+const initializeSocket = () => {
+  const token = localStorage.getItem('token');
+  return io('http://localhost:4000', {
+    auth: { token },
+    transports: ['websocket'],
+    autoConnect: true
+  });
+};
 
 function Home() {
   const navigate = useNavigate();
@@ -19,6 +31,19 @@ function Home() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
+  const [socket, setSocket] = useState(null);
+
+  // Initialize socket connection
+  useEffect(() => {
+    const newSocket = initializeSocket();
+    setSocket(newSocket);
+
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) {
@@ -55,6 +80,17 @@ function Home() {
 
     fetchWorkspaces();
   }, [navigate]);
+
+  useEffect(() => {
+    if (socket && selectedWorkspace?.id) {
+      // Join workspace room for real-time updates
+      socket.emit('join_workspace', selectedWorkspace.id);
+      
+      return () => {
+        socket.emit('leave_workspace', selectedWorkspace.id);
+      };
+    }
+  }, [selectedWorkspace, socket]);
 
   const fetchWorkspaceMembers = async (workspaceId) => {
     try {
@@ -271,16 +307,19 @@ function Home() {
       <div className="main-content">
         {selectedWorkspace ? (
           <ChatRoom 
-            roomId={selectedWorkspace.workspace.id.toString()} 
+            roomId={selectedWorkspace.id}
             username={user?.username}
           />
         ) : (
           <div className="welcome-message">
-            <h2>Welcome to A1 Company Ltd.</h2>
-            <p>Select a workspace to start chatting</p>
+            <h2>Welcome to your workspace!</h2>
+            <p>Select a workspace to start chatting or create a new one.</p>
           </div>
         )}
       </div>
+
+      {/* AI Chat Box */}
+      <AiChatBox workspaceId={selectedWorkspace?.id} />
     </div>
   );
 }

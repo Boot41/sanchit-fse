@@ -42,6 +42,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize socket.io
+app.set('io', io);
+initializeSocket(io);
+
 // Use routes
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/', messageRoutes);
@@ -350,9 +354,6 @@ io.on('connection', (socket) => {
 });
 
 // Start server
-// Initialize socket.io
-initializeSocket(io);
-
 httpServer.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

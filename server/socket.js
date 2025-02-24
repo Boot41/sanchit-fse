@@ -49,64 +49,17 @@ function initializeSocket(io) {
     });
 
     // Join a workspace
-    socket.on('join_workspace', async ({ workspaceId }) => {
-      try {
-        const workspaceRoom = `workspace:${workspaceId}`;
-        
-        // Leave any existing workspace rooms
-        const rooms = socket.rooms;
-        for (const room of rooms) {
-          if (room.startsWith('workspace:') && room !== workspaceRoom) {
-            socket.leave(room);
-            console.log(`User ${socket.user.userId} left room ${room}`);
-          }
-        }
-        
-        // Join the new room
-        await socket.join(workspaceRoom);
-        console.log(`User ${socket.user.userId} joined workspace ${workspaceId}`);
-        
-        // Store user in Redis with workspace info
-        const userInfo = {
-          userId: socket.user.userId,
-          socketId: socket.id,
-          workspaceId: workspaceId,
-          joinedAt: Date.now()
-        };
-        
-        await redis.hset(
-          'workspace_users',
-          socket.id,
-          JSON.stringify(userInfo)
-        );
-        
-        // Get all sockets in the room
-        const socketsInRoom = await io.in(workspaceRoom).allSockets();
-        console.log(`Sockets in room ${workspaceRoom}:`, Array.from(socketsInRoom));
-        
-        // Get all users in the workspace
-        const allUsers = await redis.hgetall('workspace_users');
-        const workspaceUsers = Object.values(allUsers)
-          .map(u => JSON.parse(u))
-          .filter(u => u.workspaceId === workspaceId);
-        
-        console.log(`Users in workspace ${workspaceId}:`, workspaceUsers);
-        
-        // Notify all clients in the workspace
-        io.to(workspaceRoom).emit('workspace_users', workspaceUsers);
-      } catch (error) {
-        console.error('Error joining workspace:', error);
-      }
+    socket.on('join_workspace', async (workspaceId) => {
+      const room = `workspace_${workspaceId}`;
+      socket.join(room);
+      console.log(`User ${socket.user.username} joined workspace ${workspaceId}`);
     });
 
     // Leave a workspace
-    socket.on('leave_workspace', async ({ workspaceId }) => {
-      const workspaceRoom = `workspace:${workspaceId}`;
-      socket.leave(workspaceRoom);
-      await redis.hdel(workspaceRoom, socket.id);
-      
-      const users = await redis.hgetall(workspaceRoom);
-      io.to(workspaceRoom).emit('workspace_users', Object.values(users));
+    socket.on('leave_workspace', async (workspaceId) => {
+      const room = `workspace_${workspaceId}`;
+      socket.leave(room);
+      console.log(`User ${socket.user.username} left workspace ${workspaceId}`);
     });
 
     // Handle chat message
@@ -120,7 +73,7 @@ function initializeSocket(io) {
     // Handle workspace message
     socket.on('workspace_message', async ({ workspaceId, message }) => {
       try {
-        const room = `workspace:${workspaceId}`;
+        const room = `workspace_${workspaceId}`;
         
         // Verify the socket is in the room
         const rooms = Array.from(socket.rooms);
@@ -148,21 +101,11 @@ function initializeSocket(io) {
     // Handle disconnection
     socket.on('disconnect', async () => {
       console.log('User disconnected:', socket.user.username);
-      
-      // Clean up Redis for all rooms
-      const rooms = await redis.keys('room:*');
+      const rooms = [...socket.rooms];
       for (const room of rooms) {
-        await redis.hdel(room, socket.id);
-        const users = await redis.hgetall(room);
-        io.to(room.replace('room:', '')).emit('room_users', Object.values(users));
-      }
-
-      // Clean up Redis for all workspaces
-      const workspaces = await redis.keys('workspace:*');
-      for (const workspace of workspaces) {
-        await redis.hdel(workspace, socket.id);
-        const users = await redis.hgetall(workspace);
-        io.to(workspace).emit('workspace_users', Object.values(users));
+        await redis.hdel(`room:${room}`, socket.id);
+        const users = await redis.hgetall(`room:${room}`);
+        io.to(room).emit('room_users', Object.values(users));
       }
     });
   });
