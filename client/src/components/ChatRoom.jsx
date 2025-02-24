@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
-import axios from 'axios';
 import '../styles/chat.css';
 
 function ChatRoom({ roomId, username }) {
@@ -41,11 +40,7 @@ function ChatRoom({ roomId, username }) {
     // Listen for task_created events
     socket.on('task_created', async ({ task }) => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`http://localhost:4000/api/workspaces/${roomId}/tasks`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTasks(response.data);
+        setTasks((prev) => [...prev, task]);
       } catch (error) {
         console.error('Error fetching tasks:', error);
       }
@@ -54,22 +49,8 @@ function ChatRoom({ roomId, username }) {
     // Fetch initial messages and tasks
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const [messagesRes, tasksRes] = await Promise.all([
-          axios.get(`http://localhost:4000/api/workspaces/${roomId}/messages`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }),
-          axios.get(`http://localhost:4000/api/workspaces/${roomId}/tasks`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        ]);
-        setMessages(messagesRes.data.map(msg => ({
-          message: msg.content,
-          username: msg.sender.username,
-          timestamp: msg.createdAt
-        })));
-        setTasks(tasksRes.data);
-        scrollToBottom();
+        socket.emit('get_previous_messages', { roomId });
+        socket.emit('get_tasks', { roomId });
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -91,13 +72,6 @@ function ChatRoom({ roomId, username }) {
     e.preventDefault();
     if (message.trim() && socket) {
       try {
-        const token = localStorage.getItem('token');
-        await axios.post(`http://localhost:4000/api/messages/workspaces/${roomId}/messages`, {
-          content: message.trim()
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
         socket.emit('send_message', {
           roomId,
           message: message.trim(),
