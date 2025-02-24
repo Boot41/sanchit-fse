@@ -229,4 +229,71 @@ router.patch('/workspaces/:workspaceId/tasks/:taskId', isAuth, async (req, res) 
   }
 });
 
+// Update task details
+router.put('/:taskId', isAuth, async (req, res) => {
+  const { taskId } = req.params;
+  const { title, description, dueDate, labels, status, progress, assigneeId } = req.body;
+
+  try {
+    // Verify task exists and user has access
+    const task = await prisma.task.findUnique({
+      where: { id: parseInt(taskId) },
+      include: { workspace: true }
+    });
+
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Check if user is a member of the workspace
+    const userWorkspace = await prisma.userWorkspace.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId: req.user.id,
+          workspaceId: task.workspaceId
+        }
+      }
+    });
+
+    if (!userWorkspace) {
+      return res.status(403).json({ error: 'Not authorized to update this task' });
+    }
+
+    const updatedTask = await prisma.task.update({
+      where: {
+        id: parseInt(taskId)
+      },
+      data: {
+        title,
+        description,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+        labels,
+        status,
+        progress,
+        assigneeId: assigneeId ? parseInt(assigneeId) : undefined
+      },
+      include: {
+        assignee: true,
+        workspace: true
+      }
+    });
+
+    // Emit socket event if io is available
+    if (req.io) {
+      req.io.to(`workspace_${task.workspaceId}`).emit('task_updated', { task: updatedTask });
+    }
+
+    res.json({ 
+      task: updatedTask,
+      message: 'Task updated successfully'
+    });
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ 
+      error: 'Failed to update task',
+      details: error.message 
+    });
+  }
+});
+
 module.exports = router;

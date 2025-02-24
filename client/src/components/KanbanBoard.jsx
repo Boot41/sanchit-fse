@@ -5,6 +5,67 @@ import '../styles/kanban.css';
 
 const KanbanBoard = ({ workspaceId, socket }) => {
   const [tasks, setTasks] = useState([]);
+  const [editingTask, setEditingTask] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+
+  // Add state for form fields
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    assigneeId: ''
+  });
+
+  const handleTaskClick = (task) => {
+    setEditingTask(task);
+    setEditForm({
+      title: task.title,
+      description: task.description || '',
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      assigneeId: task.assigneeId
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingTask(null);
+    setEditForm({
+      title: '',
+      description: '',
+      dueDate: '',
+      assigneeId: ''
+    });
+  };
+
+  const handleUpdateTask = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `http://localhost:4000/api/tasks/${editingTask.id}`,
+        {
+          ...editForm,
+          status: editingTask.status,
+          progress: editingTask.progress,
+          labels: editingTask.labels
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Update tasks state with the updated task
+      setTasks(tasks.map(task => 
+        task.id === editingTask.id ? response.data.task : task
+      ));
+
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      setError(error.response?.data?.error || 'Failed to update task');
+    }
+  };
+
   const [columns] = useState({
     tasks: {
       name: 'Tasks',
@@ -27,7 +88,7 @@ const KanbanBoard = ({ workspaceId, socket }) => {
   const fetchTasks = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:4000/api/workspaces/${workspaceId}/tasks`, {
+      const response = await axios.get(`http://localhost:4000/api/tasks/workspaces/${workspaceId}/tasks`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTasks(response.data);
@@ -36,8 +97,24 @@ const KanbanBoard = ({ workspaceId, socket }) => {
     }
   };
 
+  // Fetch workspace members
+  const fetchWorkspaceMembers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `http://localhost:4000/api/workspaces/${workspaceId}/members`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setWorkspaceMembers(response.data);
+    } catch (error) {
+      console.error('Error fetching workspace members:', error);
+      setError('Failed to fetch workspace members');
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
+    fetchWorkspaceMembers();
   }, [workspaceId]);
 
   useEffect(() => {
@@ -56,7 +133,7 @@ const KanbanBoard = ({ workspaceId, socket }) => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `http://localhost:4000/api/workspaces/${workspaceId}/tasks/${taskId}`,
+        `http://localhost:4000/api/tasks/workspaces/${workspaceId}/tasks/${taskId}`,
         { progress },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -119,8 +196,11 @@ const KanbanBoard = ({ workspaceId, socket }) => {
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             className={`task-card ${snapshot.isDragging ? 'dragging' : ''}`}
+                            onClick={() => handleTaskClick(task)}
                           >
-                            <h4>{task.title}</h4>
+                            <h4 className={task.progress === 'completed' ? 'completed' : ''}>
+                              {task.title}
+                            </h4>
                             {task.description && (
                               <p>{task.description}</p>
                             )}
@@ -153,6 +233,70 @@ const KanbanBoard = ({ workspaceId, socket }) => {
           ))}
         </div>
       </DragDropContext>
+
+      {isDialogOpen && (
+        <div className="dialog-overlay" onClick={handleCloseDialog}>
+          <div className="dialog" onClick={e => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h2 className="dialog-title">Edit Task</h2>
+              <button className="dialog-close" onClick={handleCloseDialog}>&times;</button>
+            </div>
+            <div className="dialog-content">
+              <div className="form-group">
+                <label htmlFor="title">Title</label>
+                <input
+                  id="title"
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                  placeholder="Enter task title"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="description">Description</label>
+                <textarea
+                  id="description"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                  placeholder="Enter task description"
+                ></textarea>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="dueDate">Due Date</label>
+                <input
+                  id="dueDate"
+                  type="date"
+                  value={editForm.dueDate}
+                  onChange={(e) => setEditForm({...editForm, dueDate: e.target.value})}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="assignee">Assignee</label>
+                <select
+                  id="assignee"
+                  value={editForm.assigneeId || ''}
+                  onChange={(e) => setEditForm({...editForm, assigneeId: e.target.value})}
+                >
+                  <option value="">Select assignee</option>
+                  {workspaceMembers.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.user.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="dialog-actions">
+              <button className="btn btn-secondary" onClick={handleCloseDialog}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleUpdateTask}>Update Task</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

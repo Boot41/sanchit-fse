@@ -213,7 +213,7 @@ Please provide assistance while keeping this detailed workspace context in mind.
         await sendMessage(userMessage);
       } else {
         // Create task
-        const response = await api.post(`/api/workspaces/${workspaceId}/tasks/create-from-prompt`, {
+        const response = await api.post(`/api/tasks/workspaces/${workspaceId}/tasks/create-from-prompt`, {
           prompt: userMessage
         });
         
