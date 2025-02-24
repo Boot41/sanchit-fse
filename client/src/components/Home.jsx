@@ -269,45 +269,47 @@ function Home() {
                           </li>
                         ))}
                       </ul>
-                      {workspace.role === 'leader' && (
-                        <div className="dropdown-actions">
-                          {showInviteForm && activeDropdown === workspace.id ? (
-                            <form onSubmit={(e) => {
-                              e.preventDefault();
-                              handleInviteMember(workspace.id);
-                            }} className="invite-form">
-                              <input
-                                type="email"
-                                value={inviteEmail}
-                                onChange={(e) => setInviteEmail(e.target.value)}
-                                placeholder="Enter email"
-                                required
-                              />
-                              <div className="form-buttons">
-                                <button type="submit">Send</button>
-                                <button type="button" onClick={() => {
-                                  setShowInviteForm(false);
-                                  setInviteError('');
-                                }}>Cancel</button>
-                              </div>
-                              {inviteError && <p className="error-message">{inviteError}</p>}
-                            </form>
-                          ) : (
-                            <button 
-                              className="dropdown-btn"
-                              onClick={() => setShowInviteForm(true)}
-                            >
-                              Invite Members
-                            </button>
-                          )}
-                          <button 
-                            className="dropdown-btn"
-                            onClick={toggleKanban}
-                          >
-                            Progress Board
-                          </button>
-                        </div>
-                      )}
+                      <div className="dropdown-actions">
+                        <button 
+                          className="dropdown-btn"
+                          onClick={toggleKanban}
+                        >
+                          Progress Board
+                        </button>
+                        {workspace.role === 'leader' && (
+                          <>
+                            {showInviteForm && activeDropdown === workspace.id ? (
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                handleInviteMember(workspace.id);
+                              }} className="invite-form">
+                                <input
+                                  type="email"
+                                  value={inviteEmail}
+                                  onChange={(e) => setInviteEmail(e.target.value)}
+                                  placeholder="Enter email"
+                                  required
+                                />
+                                <div className="form-buttons">
+                                  <button type="submit">Send</button>
+                                  <button type="button" onClick={() => {
+                                    setShowInviteForm(false);
+                                    setInviteError('');
+                                  }}>Cancel</button>
+                                </div>
+                                {inviteError && <p className="error-message">{inviteError}</p>}
+                              </form>
+                            ) : (
+                              <button 
+                                className="dropdown-btn"
+                                onClick={() => setShowInviteForm(true)}
+                              >
+                                Invite Members
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </li>
