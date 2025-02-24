@@ -329,10 +329,12 @@ function Home() {
       <div className="main-content">
         {selectedWorkspace ? (
           showKanban ? (
-            <KanbanBoard
-              workspaceId={selectedWorkspace.id}
-              socket={socket}
-            />
+            <div className="kanban-container">
+              <KanbanBoard
+                workspaceId={selectedWorkspace.id}
+                socket={socket}
+              />
+            </div>
           ) : (
             <ChatRoom
               roomId={selectedWorkspace.id}
@@ -348,9 +350,9 @@ function Home() {
         )}
       </div>
 
-      {/* Right Sidebar with AI Chat */}
+      {/* AI Chat Panel */}
       {selectedWorkspace && (
-        <div className="right-sidebar">
+        <div className="ai-chat-container">
           <div className="online-users-section">
             <h3>Online Users</h3>
             <div className="online-users-list">

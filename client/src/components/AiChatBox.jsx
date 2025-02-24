@@ -154,7 +154,6 @@ Please provide assistance while keeping this detailed workspace context in mind.
     try {
       let response;
       const userMessage = { role: 'user', content: messageText };
-      setMessages(prev => [...prev, userMessage]);
       
       if (!conversationId) {
         // Start new conversation
@@ -165,10 +164,10 @@ Please provide assistance while keeping this detailed workspace context in mind.
         
         setConversationId(response.data.conversationId);
         
-        // Add only the assistant's response since we already added the user message
+        // Update messages with both user message and assistant response
         const assistantMessage = response.data.messages.find(m => m.role === 'assistant');
         if (assistantMessage) {
-          setMessages(prev => [...prev, assistantMessage]);
+          setMessages(prev => [...prev, userMessage, assistantMessage]);
         }
       } else {
         // Continue existing conversation
@@ -176,10 +175,10 @@ Please provide assistance while keeping this detailed workspace context in mind.
           message: messageText
         });
         
-        // Add only the assistant's response since we already added the user message
+        // Update messages with both user message and assistant response
         const assistantMessage = response.data.messages.find(m => m.role === 'assistant');
         if (assistantMessage) {
-          setMessages(prev => [...prev, assistantMessage]);
+          setMessages(prev => [...prev, userMessage, assistantMessage]);
         }
       }
       
@@ -189,6 +188,7 @@ Please provide assistance while keeping this detailed workspace context in mind.
       const errorMessage = error.response?.data?.error || error.message || 'Failed to send message';
       setMessages(prev => [
         ...prev,
+        userMessage,
         {
           role: 'system',
           content: `Error: ${errorMessage}`
@@ -206,7 +206,6 @@ Please provide assistance while keeping this detailed workspace context in mind.
     setInput('');
     
     // Add user message immediately
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
     try {

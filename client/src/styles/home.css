@@ -1,5 +1,21 @@
+/* Global Reset and Box Model */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
-  --sidebar-width: 260px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 60px;
   --header-height: 60px;
   --primary-color: #10B981;
   --text-primary: #111827;
@@ -7,36 +23,118 @@
   --bg-hover: #F3F4F6;
   --border-color: #e9ecef;
   --hover-color: #F3F4F6;
+  --transition-speed: 0.3s;
 }
 
 .app-container {
   display: flex;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   overflow: hidden;
   background: white;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
+/* Collapsible Sidebar */
 .sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
   height: 100%;
   background: #f8f9fa;
   border-right: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
+  transition: all var(--transition-speed) ease;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sidebar:hover {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+}
+
+/* Hide elements when sidebar is collapsed */
+.sidebar:not(:hover) .workspace-title h1,
+.sidebar:not(:hover) .workspaces-header h2,
+.sidebar:not(:hover) .workspace-name,
+.sidebar:not(:hover) .user-name,
+.sidebar:not(:hover) .add-workspace-btn,
+.sidebar:not(:hover) .workspace-list,
+.sidebar:not(:hover) .user-profile,
+.sidebar:not(:hover) .workspace-dropdown {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sidebar:not(:hover) .workspace-icon,
+.sidebar:not(:hover) .user-avatar {
+  margin: 0 auto;
+  transform: scale(0);
+  visibility: hidden;
+}
+
+/* Show content only when sidebar is expanded */
+.sidebar:hover .workspace-icon,
+.sidebar:hover .user-avatar,
+.sidebar:hover .workspace-title h1,
+.sidebar:hover .workspaces-header h2,
+.sidebar:hover .workspace-name,
+.sidebar:hover .user-name,
+.sidebar:hover .add-workspace-btn,
+.sidebar:hover .workspace-list,
+.sidebar:hover .user-profile,
+.sidebar:hover .workspace-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+/* Adjust transitions */
+.workspace-icon,
+.user-avatar,
+.workspace-title h1,
+.workspaces-header h2,
+.workspace-name,
+.user-name,
+.add-workspace-btn,
+.workspace-list,
+.user-profile,
+.workspace-dropdown {
+  transition: all var(--transition-speed) ease;
+}
+
+/* Ensure sidebar header is centered when collapsed */
+.sidebar:not(:hover) .sidebar-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+/* Adjust footer when collapsed */
+.sidebar:not(:hover) .sidebar-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
 }
 
 .sidebar-header {
   padding: 1.5rem;
   border-bottom: 1px solid #e9ecef;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .workspace-title {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  transition: all var(--transition-speed) ease;
 }
 
 .workspace-icon {
@@ -302,34 +400,33 @@
   color: #374151;
 }
 
+/* Main Content Area */
 .main-content {
   flex: 1;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+}
+
+/* Right Panel (AI Chat) */
+.ai-chat-container {
+  width: 400px;
+  min-width: 400px;
+  max-width: 400px;
   height: 100%;
+  background: #fff;
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  transition: all var(--transition-speed) ease;
 }
 
-.welcome-message {
+/* Kanban Board Container */
+.kanban-container {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #6B7280;
-  padding: 2rem;
-}
-
-.welcome-message h2 {
-  font-size: 1.5rem;
-  color: #374151;
-  margin-bottom: 1rem;
-}
-
-.welcome-message p {
-  font-size: 1rem;
-  max-width: 500px;
+  overflow: hidden;
+  padding: 1rem;
 }
 
 .channel-header {
