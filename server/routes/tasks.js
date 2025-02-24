@@ -40,7 +40,13 @@ router.post('/workspaces/:workspaceId/tasks/create-from-prompt', isAuth, async (
       include: { user: true }
     });
 
-    const systemMessage = `You are a task creation assistant. Extract task information from the user's prompt and respond in JSON format.
+    let parsedTask;
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: `You are a task creation assistant. Extract task information from the user's prompt and respond in JSON format.
 Follow these rules:
 1. Title should be concise (2-5 words) and action-oriented
 2. If someone is mentioned with "remind" or "tell", they should be identified as the assignee
@@ -57,15 +63,7 @@ Response: {
   "labels": ["reminder", "health"]
 }
 
-Current prompt: "${prompt}"`;
-
-    let parsedTask;
-    try {
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: systemMessage
+Current prompt: "${prompt}"`
           }
         ],
         model: "mixtral-8x7b-32768",
@@ -85,13 +83,13 @@ Current prompt: "${prompt}"`;
       }
     } catch (error) {
       console.error('AI processing error:', error);
-      return res.status(500).json({ 
+      return res.status(400).json({ 
         error: 'Failed to process task with AI',
         details: error.message
       });
     }
 
-    // Find assignee by username
+    // Find assignee by username if specified
     let assigneeId = userId; // Default to creator
     if (parsedTask.assigneeName) {
       const assignee = workspaceMembers.find(
@@ -103,84 +101,86 @@ Current prompt: "${prompt}"`;
     }
 
     // Create the task
-    const task = await prisma.task.create({
-      data: {
-        title: parsedTask.title,
-        description: parsedTask.description || null,
-        dueDate: parsedTask.dueDate ? new Date(parsedTask.dueDate) : null,
-        labels: parsedTask.labels || [],
-        assigneeId: assigneeId,
-        workspaceId: parseInt(workspaceId),
-        status: "pending"
-      },
-      include: {
-        assignee: {
-          select: {
-            id: true,
-            username: true,
-            email: true
-          }
+    try {
+      const task = await prisma.task.create({
+        data: {
+          title: parsedTask.title,
+          description: parsedTask.description || '',
+          assigneeId,
+          workspaceId: parseInt(workspaceId),
+          creatorId: userId,
+          dueDate: parsedTask.dueDate ? new Date(parsedTask.dueDate) : null,
+          labels: parsedTask.labels || [],
+          progress: 0
+        },
+        include: {
+          assignee: true,
+          creator: true
         }
-      }
-    });
+      });
 
-    // Get io instance and emit event
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`workspace_${workspaceId}`).emit('task_created', { task });
-    } else {
-      console.warn('Socket.io instance not found');
+      // Emit socket event
+      req.io.to(`workspace_${workspaceId}`).emit('task_created', { task });
+
+      return res.status(201).json({ 
+        task,
+        message: 'Task created successfully'
+      });
+    } catch (error) {
+      console.error('Database error:', error);
+      return res.status(400).json({ 
+        error: 'Failed to create task',
+        details: error.message
+      });
     }
-
-    res.json({
-      message: 'Task created successfully',
-      task
-    });
   } catch (error) {
-    console.error('Task creation error:', error);
-    res.status(500).json({ 
-      error: 'Failed to create task',
-      details: error.message
+    console.error('Unexpected error:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
     });
   }
 });
 
-// Get workspace tasks
+// Get tasks for a workspace
 router.get('/workspaces/:workspaceId/tasks', isAuth, async (req, res) => {
   try {
     const workspaceId = parseInt(req.params.workspaceId);
     const userId = req.user.id;
 
-    // Check workspace access
+    // Check workspace membership
     const userWorkspace = await prisma.userWorkspace.findUnique({
       where: {
         userId_workspaceId: {
           userId,
-          workspaceId,
-        },
-      },
+          workspaceId
+        }
+      }
     });
 
     if (!userWorkspace) {
-      return res.status(403).json({ error: 'Not a member of this workspace' });
+      return res.status(403).json({ error: 'Access denied to this workspace' });
     }
 
+    // Get tasks
     const tasks = await prisma.task.findMany({
       where: { workspaceId },
       include: {
-        assignee: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
+        assignee: true,
+        creator: true
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
-    res.json(tasks);
+    return res.status(200).json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
-    res.status(500).json({ error: 'Failed to fetch tasks' });
+    return res.status(500).json({ 
+      error: 'Failed to fetch tasks',
+      details: error.message
+    });
   }
 });
 

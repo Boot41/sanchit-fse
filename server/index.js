@@ -46,7 +46,7 @@ initializeSocket(io);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/groq', groqRoutes);
-app.use('/api/tasks', taskRoutes);
+app.use('/api', taskRoutes);
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {
