@@ -182,7 +182,7 @@ function Home() {
       <div className="sidebar">
         <div className="sidebar-header">
           <div className="workspace-title">
-            <span className="workspace-icon">Ac</span>
+            {/* <span className="workspace-icon">Ac</span> */}
             <h1>DASHBOARD</h1>
           </div>
         </div>
@@ -319,7 +319,7 @@ function Home() {
         <div className="sidebar-footer">
           <div className="user-profile" onClick={handleLogout}>
             <div className="user-avatar">{user?.username?.[0]?.toUpperCase()}</div>
-            <span className="user-name">{user?.username}</span>
+            <span className="user-name">LOGOUT</span>
           </div>
         </div>
       </div>

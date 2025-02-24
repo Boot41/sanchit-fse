@@ -106,15 +106,15 @@ function ChatRoom({ roomId, username }) {
           <div ref={messagesEndRef} />
         </div>
         
-        <div className="users-sidebar">
-          {/* <div className="sidebar-section">
+        {/* <div className="users-sidebar">
+           <div className="sidebar-section">
             <h3>Online Users</h3>
             <ul className="users-list">
               {users.map((user, index) => (
                 <li key={index}>{user}</li>
               ))}
             </ul>
-          </div> */}
+          </div> 
 
           <div className="sidebar-section">
             <h3>Tasks</h3>
@@ -141,18 +141,19 @@ function ChatRoom({ roomId, username }) {
               ))}
             </ul>
           </div>
-        </div>
+        </div> */}
       </div>
 
-      <form onSubmit={handleSendMessage} className="message-form">
+      <form onSubmit={handleSendMessage} className="message-form grid grid-cols-2 gap-2">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Type a message..."
+          className="message-input col-span-1"
           required
         />
-        <button type="submit" disabled={!message.trim()}>
+        <button type="submit" disabled={!message.trim()} className="send-button col-span-1">
           Send
         </button>
       </form>

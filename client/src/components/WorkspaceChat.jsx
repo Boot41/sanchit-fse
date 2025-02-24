@@ -196,9 +196,12 @@ function WorkspaceChat({ workspace, onClose }) {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
+          className="message-input"
           required
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={!newMessage.trim()} className="send-button">
+          Send
+        </button>
       </form>
     </div>
   );
