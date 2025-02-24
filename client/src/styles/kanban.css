@@ -1,6 +1,6 @@
 .kanban-board {
   padding: 2rem;
-  height: calc(100vh - 80px);
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -21,18 +21,21 @@
   display: flex;
   gap: 1rem;
   flex: 1;
-  overflow: hidden;
+  overflow-x: auto;
   padding-bottom: 1rem;
+  min-height: 0; /* Important for flex overflow */
 }
 
 .kanban-column {
   flex: 1;
   min-width: 300px;
+  max-width: 350px;
   background: #f3f4f6;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .kanban-column h3 {
@@ -90,6 +93,16 @@
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
   transform: rotate(2deg) scale(1.02);
   background: #ffffff;
+}
+
+/* Add green shadow for assigned tasks */
+.task-card.assigned-to-me {
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.task-card.assigned-to-me:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .task-card h4 {

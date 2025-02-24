@@ -9,6 +9,7 @@ const KanbanBoard = ({ workspaceId, socket }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const currentUser = JSON.parse(localStorage.getItem('user'));
 
   // Add state for form fields
   const [editForm, setEditForm] = useState({
@@ -195,7 +196,9 @@ const KanbanBoard = ({ workspaceId, socket }) => {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`task-card ${snapshot.isDragging ? 'dragging' : ''}`}
+                            className={`task-card ${snapshot.isDragging ? 'dragging' : ''} ${
+                              task.assignee?.id === currentUser?.id ? 'assigned-to-me' : ''
+                            }`}
                             onClick={() => handleTaskClick(task)}
                           >
                             <h4 className={task.progress === 'completed' ? 'completed' : ''}>

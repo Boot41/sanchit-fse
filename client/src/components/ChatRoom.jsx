@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
-import '../styles/chat.css';
+import '../styles/chatroom.css';
 
 function ChatRoom({ roomId, username }) {
   const socket = useSocket();
@@ -96,11 +96,11 @@ function ChatRoom({ roomId, username }) {
             >
               <div className="message-header">
                 <span className="username">{msg.username}</span>
-                <span className="timestamp">
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </span>
               </div>
               <div className="message-content">{msg.message}</div>
+              <span className="timestamp">
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
           ))}
           <div ref={messagesEndRef} />

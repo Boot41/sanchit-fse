@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import { useSocket } from '../context/SocketContext';
 import '../styles/aichat.css';
 
 // Create axios instance with base URL and auth header
@@ -28,6 +30,7 @@ const AiChatBox = ({ workspaceId }) => {
   const [isContextLoading, setIsContextLoading] = useState(true);
   const messagesEndRef = useRef(null);
   const [mode, setMode] = useState('chat'); // 'chat' or 'task'
+  const socket = useSocket();
 
   // Fetch workspace context when workspace changes
   useEffect(() => {
@@ -140,6 +143,47 @@ Please provide assistance while keeping this detailed workspace context in mind.
     setInput('');
     setIsLoading(false);
   }, [workspaceId]);
+
+  // Listen for new messages in the workspace
+  useEffect(() => {
+    if (!socket || !workspaceId) return;
+
+    const handleNewMessage = (data) => {
+      // Update workspace context with new message
+      const newMessage = {
+        content: data.message,
+        username: data.sender.username,
+        timestamp: new Date().toLocaleString()
+      };
+      
+      setWorkspaceContext(prevContext => {
+        const contextLines = prevContext.split('\n');
+        const recentDiscussionsIndex = contextLines.findIndex(line => line.startsWith('Recent Discussions:'));
+        
+        if (recentDiscussionsIndex === -1) return prevContext;
+        
+        // Insert new message after the "Recent Discussions:" line
+        contextLines.splice(recentDiscussionsIndex + 1, 0, `[${newMessage.timestamp}] ${newMessage.username}: ${newMessage.content}`);
+        
+        // Keep only last 10 messages
+        const discussionsEndIndex = contextLines.findIndex((line, index) => 
+          index > recentDiscussionsIndex && line.startsWith('Instructions:')
+        );
+        
+        if (discussionsEndIndex !== -1) {
+          const messages = contextLines.slice(recentDiscussionsIndex + 1, discussionsEndIndex);
+          if (messages.length > 10) {
+            contextLines.splice(recentDiscussionsIndex + 1, messages.length - 10);
+          }
+        }
+        
+        return contextLines.join('\n');
+      });
+    };
+
+    socket.on('new_message', handleNewMessage);
+    return () => socket.off('new_message', handleNewMessage);
+  }, [socket, workspaceId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -272,12 +316,16 @@ Please provide assistance while keeping this detailed workspace context in mind.
       <div className="ai-chat-messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.role}`}>
-            <div className="message-content">{msg.content}</div>
+            <div className="message-content">
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            </div>
           </div>
         ))}
         {(isLoading || isContextLoading) && (
           <div className="message assistant">
-            <div className="message-content">{isContextLoading ? "Loading workspace context..." : "Thinking..."}</div>
+            <div className="message-content">
+              {isContextLoading ? "Loading workspace context..." : "Thinking..."}
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />

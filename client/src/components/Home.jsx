@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import ChatRoom from './ChatRoom';
@@ -35,6 +35,10 @@ function Home() {
   const user = JSON.parse(localStorage.getItem('user'));
   const [socket, setSocket] = useState(null);
   const [showKanban, setShowKanban] = useState(false); // Add showKanban state
+  const [aiPanelWidth, setAiPanelWidth] = useState(400); // Default width
+  const resizeRef = useRef(null);
+  const MIN_PANEL_WIDTH = 400; // Minimum width
+  const MAX_PANEL_WIDTH = 800; // Maximum width
 
   // Initialize socket connection
   useEffect(() => {
@@ -171,6 +175,28 @@ function Home() {
 
   const toggleKanban = () => {
     setShowKanban(!showKanban);
+  };
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    if (resizeRef.current) {
+      const containerRect = resizeRef.current.parentElement.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+      
+      if (newWidth >= MIN_PANEL_WIDTH && newWidth <= MAX_PANEL_WIDTH) {
+        setAiPanelWidth(newWidth);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
   };
 
   if (routeRoomId) {
@@ -352,7 +378,15 @@ function Home() {
 
       {/* AI Chat Panel */}
       {selectedWorkspace && (
-        <div className="ai-chat-container">
+        <div 
+          className="ai-chat-container" 
+          ref={resizeRef}
+          style={{ width: aiPanelWidth }}
+        >
+          <div 
+            className="resize-handle"
+            onMouseDown={handleMouseDown}
+          />
           <div className="online-users-section">
             <h3>Online Users</h3>
             <div className="online-users-list">

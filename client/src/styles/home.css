@@ -15,11 +15,10 @@ html, body {
 
 :root {
   --sidebar-width: 280px;
-  --sidebar-collapsed-width: 60px;
   --header-height: 60px;
   --primary-color: #10B981;
   --text-primary: #111827;
-  --text-secondary: #6B7280;
+  --text-secondary: #4B5563;
   --bg-hover: #F3F4F6;
   --border-color: #e9ecef;
   --hover-color: #F3F4F6;
@@ -39,63 +38,20 @@ html, body {
 
 /* Collapsible Sidebar */
 .sidebar {
-  width: var(--sidebar-collapsed-width);
-  min-width: var(--sidebar-collapsed-width);
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
   height: 100%;
   background: #f8f9fa;
   border-right: 1px solid #e9ecef;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition: all var(--transition-speed) ease;
+  overflow-y: auto;
   position: relative;
   -webkit-overflow-scrolling: touch;
 }
 
-.sidebar:hover {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
-}
-
-/* Hide elements when sidebar is collapsed */
-.sidebar:not(:hover) .workspace-title h1,
-.sidebar:not(:hover) .workspaces-header h2,
-.sidebar:not(:hover) .workspace-name,
-.sidebar:not(:hover) .user-name,
-.sidebar:not(:hover) .add-workspace-btn,
-.sidebar:not(:hover) .workspace-list,
-.sidebar:not(:hover) .user-profile,
-.sidebar:not(:hover) .workspace-dropdown {
-  opacity: 0;
-  visibility: hidden;
-}
-
-.sidebar:not(:hover) .workspace-icon,
-.sidebar:not(:hover) .user-avatar {
-  margin: 0 auto;
-  transform: scale(0);
-  visibility: hidden;
-}
-
-/* Show content only when sidebar is expanded */
-.sidebar:hover .workspace-icon,
-.sidebar:hover .user-avatar,
-.sidebar:hover .workspace-title h1,
-.sidebar:hover .workspaces-header h2,
-.sidebar:hover .workspace-name,
-.sidebar:hover .user-name,
-.sidebar:hover .add-workspace-btn,
-.sidebar:hover .workspace-list,
-.sidebar:hover .user-profile,
-.sidebar:hover .workspace-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-}
-
-/* Adjust transitions */
-.workspace-icon,
-.user-avatar,
+/* Show all elements in sidebar */
 .workspace-title h1,
 .workspaces-header h2,
 .workspace-name,
@@ -103,28 +59,19 @@ html, body {
 .add-workspace-btn,
 .workspace-list,
 .user-profile,
-.workspace-dropdown {
-  transition: all var(--transition-speed) ease;
+.workspace-dropdown,
+.workspace-icon,
+.user-avatar {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
 }
 
-/* Ensure sidebar header is centered when collapsed */
-.sidebar:not(:hover) .sidebar-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-}
-
-/* Adjust footer when collapsed */
-.sidebar:not(:hover) .sidebar-footer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-}
-
+/* Ensure sidebar header is properly styled */
 .sidebar-header {
-  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  padding: 1rem;
   border-bottom: 1px solid #e9ecef;
   overflow: hidden;
   white-space: nowrap;
@@ -364,9 +311,11 @@ html, body {
   margin-top: 0.5rem;
 }
 
+/* Adjust footer */
 .sidebar-footer {
-  padding: 1.5rem;
-  border-top: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  padding: 1rem;
 }
 
 .user-profile {
@@ -413,14 +362,40 @@ html, body {
 .ai-chat-container {
   width: 400px;
   min-width: 400px;
-  max-width: 400px;
+  max-width: 800px;
   height: 100%;
   background: #fff;
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: all var(--transition-speed) ease;
+  transition: none;
+  position: relative;
+  user-select: none;
+}
+
+.resize-handle {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Prevent text selection while resizing */
+.ai-chat-container.resizing,
+.ai-chat-container.resizing * {
+  user-select: none !important;
+  cursor: col-resize !important;
 }
 
 /* Kanban Board Container */
