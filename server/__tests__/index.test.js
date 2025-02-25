@@ -491,50 +491,60 @@ describe('Server API Tests', () => {
 
       prisma.workspaceMessage.findMany.mockResolvedValueOnce([]);
       
+      // Mock socket.io server
       const io = new Server();
-      io.on('connection', (socket) => {
-        socket.on('join_room', (data) => {
+      
+      // Create a mock socket handler
+      const mockSocketHandler = (socket) => {
+        socket.on('join_room', (data, callback) => {
           socket.join(data.roomId);
           socket.to(data.roomId).emit('user_joined', {
             username: data.username,
             users: [data.username]
           });
+          if (callback) callback();
         });
-      });
+      };
 
-      io.emit('connection', mockSocket);
+      // Register the handler
+      io.on('connection', mockSocketHandler);
       
-      // Get the join_room handler and call it
-      const handler = mockHandlers['join_room'];
-      handler(roomData);
+      // Simulate connection and trigger the event
+      mockSocketHandler(mockSocket);
+      await mockHandlers['join_room'](roomData);
 
       expect(mockSocket.join).toHaveBeenCalledWith(roomData.roomId);
       expect(mockSocket.to).toHaveBeenCalledWith(roomData.roomId);
       expect(mockSocket.emit).toHaveBeenCalledWith('user_joined', expect.any(Object));
     });
 
-    it('should handle leaving a room', () => {
+    it('should handle leaving a room', async () => {
       const roomData = {
         roomId: '1',
         username: 'testuser'
       };
 
+      // Mock socket.io server
       const io = new Server();
-      io.on('connection', (socket) => {
-        socket.on('leave_room', (data) => {
+      
+      // Create a mock socket handler
+      const mockSocketHandler = (socket) => {
+        socket.on('leave_room', (data, callback) => {
           socket.leave(data.roomId);
           socket.to(data.roomId).emit('user_left', {
             username: data.username,
             users: []
           });
+          if (callback) callback();
         });
-      });
+      };
 
-      io.emit('connection', mockSocket);
-
-      // Get the leave_room handler and call it
-      const handler = mockHandlers['leave_room'];
-      handler(roomData);
+      // Register the handler
+      io.on('connection', mockSocketHandler);
+      
+      // Simulate connection and trigger the event
+      mockSocketHandler(mockSocket);
+      await mockHandlers['leave_room'](roomData);
 
       expect(mockSocket.leave).toHaveBeenCalledWith(roomData.roomId);
       expect(mockSocket.to).toHaveBeenCalledWith(roomData.roomId);
@@ -556,9 +566,12 @@ describe('Server API Tests', () => {
         sender: { username: messageData.username }
       });
 
+      // Mock socket.io server
       const io = new Server();
-      io.on('connection', (socket) => {
-        socket.on('send_message', async (data) => {
+      
+      // Create a mock socket handler
+      const mockSocketHandler = (socket) => {
+        socket.on('send_message', async (data, callback) => {
           const user = await prisma.user.findFirst({
             where: { username: data.username }
           });
@@ -583,14 +596,17 @@ describe('Server API Tests', () => {
             username: data.username,
             timestamp: message.createdAt
           });
+          
+          if (callback) callback();
         });
-      });
+      };
 
-      io.emit('connection', mockSocket);
-
-      // Get the send_message handler and call it
-      const handler = mockHandlers['send_message'];
-      await handler(messageData);
+      // Register the handler
+      io.on('connection', mockSocketHandler);
+      
+      // Simulate connection and trigger the event
+      mockSocketHandler(mockSocket);
+      await mockHandlers['send_message'](messageData);
 
       expect(prisma.user.findFirst).toHaveBeenCalledWith({
         where: { username: messageData.username }

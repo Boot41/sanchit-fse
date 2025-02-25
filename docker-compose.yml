@@ -29,7 +29,7 @@ services:
       - PORT=4000
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - GROQ_API_KEY=$GROQ_API_KEY
+      - GROQ_API_KEY=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
     depends_on:
       postgres:
         condition: service_healthy

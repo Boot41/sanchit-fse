@@ -51,17 +51,29 @@ router.post('/workspaces/:workspaceId/tasks/create-from-prompt', isAuth, async (
 Follow these rules:
 1. Title should be concise (2-5 words) and action-oriented
 2. If someone is mentioned with "remind" or "tell", they should be identified as the assignee
-3. Any dates mentioned should be set as the due date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
+3. For dates:
+   - If a specific date/time is mentioned, use ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
+   - If "tomorrow" is mentioned, set date to next day at 9 AM
+   - If no date is mentioned, do not include a dueDate field
 4. Extract relevant labels from the context
+5. Always validate the date before including it
 
-Example:
+Example 1:
 User: "remind rob to drink water tomorrow"
 Response: {
   "title": "Drink water",
   "description": "Reminder to drink water",
   "assigneeName": "rob",
-  "dueDate": "2025-02-26T00:00:00.000Z",
+  "dueDate": "2025-02-26T09:00:00.000Z",
   "labels": ["reminder", "health"]
+}
+
+Example 2:
+User: "buy groceries"
+Response: {
+  "title": "Buy groceries",
+  "description": "Task to buy groceries",
+  "labels": ["shopping"]
 }
 
 Current prompt: "${prompt}"`

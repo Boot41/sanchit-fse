@@ -57,6 +57,10 @@
   word-break: break-word;
   font-size: 0.85rem;
   line-height: 1.4;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .message.user {
@@ -76,11 +80,19 @@
   border-radius: 8px;
   max-width: 80%;
   word-wrap: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 /* Markdown styles */
 .message-content > * {
   margin-bottom: 8px;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .message-content > *:last-child {
